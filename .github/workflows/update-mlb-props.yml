@@ -5,6 +5,11 @@ on:
     - cron: '*/5 * * * *'
   workflow_dispatch:
 
+# ←←← THIS IS THE FIX
+permissions:
+  contents: write
+# ←←← THIS IS THE FIX
+
 jobs:
   fetch-and-save:
     runs-on: ubuntu-latest
