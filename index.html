@@ -17,42 +17,43 @@
     <div class="max-w-7xl mx-auto p-6">
         <div class="flex justify-between items-center mb-8 border-b border-slate-800 pb-6">
             <div class="flex items-center gap-x-4">
-                <div class="w-12 h-12 bg-cyan-500 rounded-3xl flex items-center justify-center text-4xl">⚾</div>
+                <div class="text-5xl">⚾</div>
                 <h1 class="header-font text-5xl font-semibold tracking-tighter">MLB PROP OPTIMIZER</h1>
             </div>
-            <div class="text-emerald-400 text-lg font-medium">925Sports • Data updated every 5 min</div>
+            <div class="text-emerald-400 font-medium">925Sports • props.csv • Auto-updates every 5 min</div>
         </div>
 
-        <button onclick="loadCachedData()" 
-                class="mb-8 px-8 py-4 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold rounded-3xl flex items-center gap-x-3 text-lg">
-            <i class="fa-solid fa-database"></i> LOAD LATEST PROPS FROM GITHUB
+        <button onclick="loadProps()" class="mb-8 px-8 py-4 bg-emerald-400 text-slate-950 rounded-3xl font-semibold flex items-center gap-x-3">
+            <i class="fa-solid fa-rotate"></i> REFRESH PROPS
         </button>
 
-        <div id="status-bar" class="hidden mb-8 p-4 bg-slate-900 rounded-3xl text-sm flex items-center justify-between"></div>
-
         <div class="flex border-b border-slate-700 mb-6">
-            <button onclick="switchTab(0)" id="tab-0" class="tab tab-active px-8 py-4 font-semibold text-xl flex-1 md:flex-none">TRADITIONAL</button>
-            <button onclick="switchTab(1)" id="tab-1" class="tab px-8 py-4 font-semibold text-xl flex-1 md:flex-none">DFS</button>
-            <button onclick="switchTab(2)" id="tab-2" class="tab px-8 py-4 font-semibold text-xl flex-1 md:flex-none">EXCHANGES</button>
+            <button onclick="switchTab(0)" id="tab-0" class="tab tab-active px-8 py-4 font-semibold text-xl flex-1">TRADITIONAL</button>
+            <button onclick="switchTab(1)" id="tab-1" class="tab px-8 py-4 font-semibold text-xl flex-1">DFS</button>
+            <button onclick="switchTab(2)" id="tab-2" class="tab px-8 py-4 font-semibold text-xl flex-1">EXCHANGES</button>
+        </div>
+
+        <div class="flex gap-4 mb-6">
+            <input id="search" type="text" placeholder="Search player or prop..." class="flex-1 bg-slate-900 border border-slate-700 rounded-3xl px-6 py-5" onkeyup="if(event.keyCode===13) filterTable()">
+            <button onclick="filterTable()" class="px-10 bg-slate-800 hover:bg-slate-700 rounded-3xl">FILTER</button>
+            <button onclick="exportCSV()" class="px-10 bg-slate-800 hover:bg-slate-700 rounded-3xl">DOWNLOAD CSV</button>
         </div>
 
         <table class="w-full bg-slate-900 rounded-3xl overflow-hidden">
-            <thead class="bg-slate-800">
-                <tr class="text-xs text-slate-400">
+            <thead class="bg-slate-800 text-xs text-slate-400">
+                <tr>
                     <th class="text-left py-5 px-6">GAME</th>
                     <th class="text-left py-5 px-6">PLAYER</th>
                     <th class="text-left py-5 px-6">PROP</th>
                     <th class="text-left py-5 px-6">LINE</th>
                     <th class="text-left py-5 px-6">SIDE</th>
-                    <th class="text-left py-5 px-6">BOOK</th>
+                    <th class="text-left py-5 px-6">BOOKMAKER</th>
                     <th class="text-right py-5 px-6">ODDS</th>
                     <th class="text-right py-5 px-6">IMPLIED %</th>
                 </tr>
             </thead>
-            <tbody id="table-body" class="text-sm divide-y divide-slate-700"></tbody>
+            <tbody id="table-body" class="divide-y divide-slate-700 text-sm"></tbody>
         </table>
-
-        <p class="text-center text-xs text-slate-500 mt-8">Customer-facing tool by 925Sports • Auto-refreshes every 5 minutes</p>
     </div>
 
     <script>
@@ -63,36 +64,50 @@
             return odds > 0 ? (100 / (odds + 100)) * 100 : (Math.abs(odds) / (Math.abs(odds) + 100)) * 100;
         }
 
-        async function loadCachedData() {
-            try {
-                const res = await fetch('data/props.json');
-                allProps = await res.json();
-                document.getElementById('status-bar').innerHTML = `<span class="text-emerald-400">✅ Loaded ${allProps.length} props (cached on GitHub)</span>`;
-                document.getElementById('status-bar').classList.remove('hidden');
-                renderCurrentTab();
-            } catch(e) {
-                alert("No cached data yet. Please run the GitHub Action manually first (Step 6).");
-            }
+        async function loadProps() {
+            const res = await fetch('data/props.csv');
+            const text = await res.text();
+            const rows = text.trim().split('\n');
+            const headers = rows[0].split(',');
+            allProps = rows.slice(1).map(row => {
+                const values = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                return {
+                    away_team: values[5],
+                    home_team: values[4],
+                    description: values[8],
+                    market: values[6],
+                    label: values[7],
+                    price: parseFloat(values[9]),
+                    point: values[10] ? parseFloat(values[10]) : null,
+                    bookmaker: values[2]
+                };
+            }).filter(p => p.description && p.price);
+
+            renderCurrentTab();
         }
 
         function renderCurrentTab() {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
-            const types = ['traditional', 'dfs', 'exchanges'];
-            const filtered = allProps.filter(p => p.type === types[currentTab]);
+            const filtered = allProps.filter(p => {
+                if (currentTab === 0) return true;
+                if (currentTab === 1) return p.bookmaker.toLowerCase().includes('draftkings') || p.bookmaker.toLowerCase().includes('fanduel');
+                if (currentTab === 2) return p.bookmaker.toLowerCase().includes('pinnacle') || p.bookmaker.toLowerCase().includes('betfair');
+                return true;
+            });
 
             filtered.forEach(p => {
                 const row = document.createElement('tr');
-                row.className = 'hover:bg-slate-800 transition-colors';
+                row.className = 'hover:bg-slate-800';
                 row.innerHTML = `
-                    <td class="px-6 py-5">${p.game}</td>
-                    <td class="px-6 py-5 font-semibold">${p.player}</td>
-                    <td class="px-6 py-5">${p.prop}</td>
-                    <td class="px-6 py-5 font-mono">${p.line || '—'}</td>
-                    <td class="px-6 py-5"><span class="px-4 py-1 rounded-3xl text-xs ${p.side==='Over'?'bg-emerald-400 text-emerald-950':'bg-rose-400 text-rose-950'}">${p.side}</span></td>
+                    <td class="px-6 py-5">${p.away_team} @ ${p.home_team}</td>
+                    <td class="px-6 py-5 font-semibold">${p.description}</td>
+                    <td class="px-6 py-5">${p.market.replace(/_/g,' ').toUpperCase()}</td>
+                    <td class="px-6 py-5 font-mono">${p.point || '—'}</td>
+                    <td class="px-6 py-5"><span class="px-4 py-1 text-xs font-bold rounded-3xl ${p.label==='Over'?'bg-emerald-400 text-emerald-950':'bg-rose-400 text-rose-950'}">${p.label}</span></td>
                     <td class="px-6 py-5 text-xs uppercase">${p.bookmaker}</td>
-                    <td class="px-6 py-5 text-right font-mono text-xl">${p.odds}</td>
-                    <td class="px-6 py-5 text-right font-mono">${americanToImplied(p.odds).toFixed(1)}%</td>
+                    <td class="px-6 py-5 text-right font-mono text-2xl">${p.price}</td>
+                    <td class="px-6 py-5 text-right font-mono">${americanToImplied(p.price).toFixed(1)}%</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -100,11 +115,20 @@
 
         function switchTab(n) {
             currentTab = n;
-            document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('tab-active', i === n));
+            document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('tab-active', i===n));
             renderCurrentTab();
         }
 
-        window.onload = loadCachedData;
+        function filterTable() {
+            const term = document.getElementById('search').value.toLowerCase();
+            document.querySelectorAll('#table-body tr').forEach(r => r.style.display = r.textContent.toLowerCase().includes(term) ? '' : 'none');
+        }
+
+        function exportCSV() {
+            window.location.href = 'data/props.csv';
+        }
+
+        window.onload = loadProps;
     </script>
 </body>
 </html>
