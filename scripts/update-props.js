@@ -1,11 +1,11 @@
 const fs = require('fs');
 
 (async () => {
-  console.log('🚀 Starting MLB Prop fetch...');
+  console.log('🚀 Starting MLB Prop fetch (matching your original CSV format)...');
 
   const API_KEY = process.env.ODDS_API_KEY;
   if (!API_KEY) {
-    console.error('❌ ERROR: ODDS_API_KEY secret is missing or empty!');
+    console.error('❌ ODDS_API_KEY secret is missing!');
     process.exit(1);
   }
 
@@ -14,64 +14,56 @@ const fs = require('fs');
 
   let allProps = [];
 
-  async function fetchRegion(region) {
-    console.log(`📡 Fetching region: ${region}`);
+  for (const region of REGIONS) {
+    console.log(`📡 Fetching ${region}...`);
     const base = `https://api.the-odds-api.com/v4/sports/baseball_mlb`;
     const params = `apiKey=${API_KEY}&regions=${region}&markets=${MARKETS}&oddsFormat=american&dateFormat=iso`;
 
     try {
       const eventsRes = await fetch(`${base}/odds?${params}&markets=h2h`);
       if (!eventsRes.ok) {
-        console.error(`❌ Events API error (${region}): ${eventsRes.status}`);
-        return;
+        console.error(`❌ Events failed for ${region}: ${eventsRes.status}`);
+        continue;
       }
       const events = await eventsRes.json();
-      console.log(`✅ Got ${events.length} events for ${region}`);
 
       for (const event of events.slice(0, 12)) {
         try {
           const res = await fetch(`${base}/events/${event.id}/odds?${params}`);
-          if (!res.ok) {
-            console.warn(`⚠️ Event ${event.id} skipped: ${res.status}`);
-            continue;
-          }
+          if (!res.ok) continue;
+
           const data = await res.json();
 
           for (const book of data.bookmakers || []) {
             for (const market of book.markets || []) {
               for (const outcome of market.outcomes || []) {
                 allProps.push({
-                  game: `${data.away_team} @ ${data.home_team}`,
-                  time: data.commence_time,
-                  player: outcome.description || outcome.name,
-                  prop: market.key.replace(/_/g, ' ').toUpperCase(),
-                  line: outcome.point || null,
-                  side: outcome.name,
-                  bookmaker: book.title,
-                  odds: outcome.price,
-                  type: region.includes('dfs') ? 'dfs' : region.includes('ex') ? 'exchanges' : 'traditional'
+                  id: data.id,
+                  commence_time: data.commence_time,
+                  bookmaker: book.key,
+                  last_update: market.last_update,
+                  home_team: data.home_team,
+                  away_team: data.away_team,
+                  market: market.key,
+                  label: outcome.name,
+                  description: outcome.description || outcome.name,
+                  price: outcome.price,
+                  point: outcome.point || null
                 });
               }
             }
           }
-        } catch (e) {
-          console.warn(`⚠️ Skipped event ${event.id}`);
-        }
-        await new Promise(r => setTimeout(r, 300));
+        } catch (e) {}
+        await new Promise(r => setTimeout(r, 250));
       }
     } catch (e) {
-      console.error(`❌ Critical error in ${region}:`, e.message);
+      console.error(`❌ Error in ${region}:`, e.message);
     }
   }
 
-  for (const r of REGIONS) {
-    await fetchRegion(r);
-  }
-
-  console.log(`✅ Finished! Total props collected: ${allProps.length}`);
+  console.log(`✅ TOTAL PROPS COLLECTED: ${allProps.length}`);
 
   fs.mkdirSync('data', { recursive: true });
   fs.writeFileSync('data/props.json', JSON.stringify(allProps, null, 2));
-
-  console.log('🎉 data/props.json saved successfully');
+  console.log('🎉 Saved data/props.json — ready for your website!');
 })();
