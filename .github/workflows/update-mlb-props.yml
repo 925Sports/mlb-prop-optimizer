@@ -1,9 +1,7 @@
 name: Update MLB Props CSV
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'     # every 5 minutes
-  workflow_dispatch:
+  workflow_dispatch:     # Only manual trigger for now
 
 permissions:
   contents: write
@@ -29,5 +27,5 @@ jobs:
           git config user.name "925Sports Bot"
           git config user.email "bot@925sports.com"
           git add data/props.csv
-          git commit -m "Auto-update props.csv - $(date)" || echo "No changes"
+          git commit -m "Manual update props.csv - $(date)" || echo "No changes"
           git push
