@@ -8,8 +8,14 @@ on:
 jobs:
   fetch-and-save:
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Fetch latest MLB props
         run: node scripts/update-props.js
