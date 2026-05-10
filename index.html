@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLB Prop Optimizer • 925Sports</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .header-font { font-family: 'Space Grotesk', sans-serif; }
+        .tab-active { border-bottom: 3px solid #00d4ff; color: #00d4ff; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200">
+    <div class="max-w-7xl mx-auto p-6">
+        <div class="flex justify-between items-center mb-8 border-b border-slate-800 pb-6">
+            <div class="flex items-center gap-x-4">
+                <div class="w-12 h-12 bg-cyan-500 rounded-3xl flex items-center justify-center text-4xl">⚾</div>
+                <h1 class="header-font text-5xl font-semibold tracking-tighter">MLB PROP OPTIMIZER</h1>
+            </div>
+            <div class="text-emerald-400 text-lg font-medium">925Sports • Data updated every 5 min</div>
+        </div>
+
+        <button onclick="loadCachedData()" 
+                class="mb-8 px-8 py-4 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-semibold rounded-3xl flex items-center gap-x-3 text-lg">
+            <i class="fa-solid fa-database"></i> LOAD LATEST PROPS FROM GITHUB
+        </button>
+
+        <div id="status-bar" class="hidden mb-8 p-4 bg-slate-900 rounded-3xl text-sm flex items-center justify-between"></div>
+
+        <div class="flex border-b border-slate-700 mb-6">
+            <button onclick="switchTab(0)" id="tab-0" class="tab tab-active px-8 py-4 font-semibold text-xl flex-1 md:flex-none">TRADITIONAL</button>
+            <button onclick="switchTab(1)" id="tab-1" class="tab px-8 py-4 font-semibold text-xl flex-1 md:flex-none">DFS</button>
+            <button onclick="switchTab(2)" id="tab-2" class="tab px-8 py-4 font-semibold text-xl flex-1 md:flex-none">EXCHANGES</button>
+        </div>
+
+        <table class="w-full bg-slate-900 rounded-3xl overflow-hidden">
+            <thead class="bg-slate-800">
+                <tr class="text-xs text-slate-400">
+                    <th class="text-left py-5 px-6">GAME</th>
+                    <th class="text-left py-5 px-6">PLAYER</th>
+                    <th class="text-left py-5 px-6">PROP</th>
+                    <th class="text-left py-5 px-6">LINE</th>
+                    <th class="text-left py-5 px-6">SIDE</th>
+                    <th class="text-left py-5 px-6">BOOK</th>
+                    <th class="text-right py-5 px-6">ODDS</th>
+                    <th class="text-right py-5 px-6">IMPLIED %</th>
+                </tr>
+            </thead>
+            <tbody id="table-body" class="text-sm divide-y divide-slate-700"></tbody>
+        </table>
+
+        <p class="text-center text-xs text-slate-500 mt-8">Customer-facing tool by 925Sports • Auto-refreshes every 5 minutes</p>
+    </div>
+
+    <script>
+        let allProps = [];
+        let currentTab = 0;
+
+        function americanToImplied(odds) {
+            return odds > 0 ? (100 / (odds + 100)) * 100 : (Math.abs(odds) / (Math.abs(odds) + 100)) * 100;
+        }
+
+        async function loadCachedData() {
+            try {
+                const res = await fetch('data/props.json');
+                allProps = await res.json();
+                document.getElementById('status-bar').innerHTML = `<span class="text-emerald-400">✅ Loaded ${allProps.length} props (cached on GitHub)</span>`;
+                document.getElementById('status-bar').classList.remove('hidden');
+                renderCurrentTab();
+            } catch(e) {
+                alert("No cached data yet. Please run the GitHub Action manually first (Step 6).");
+            }
+        }
+
+        function renderCurrentTab() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            const types = ['traditional', 'dfs', 'exchanges'];
+            const filtered = allProps.filter(p => p.type === types[currentTab]);
+
+            filtered.forEach(p => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-800 transition-colors';
+                row.innerHTML = `
+                    <td class="px-6 py-5">${p.game}</td>
+                    <td class="px-6 py-5 font-semibold">${p.player}</td>
+                    <td class="px-6 py-5">${p.prop}</td>
+                    <td class="px-6 py-5 font-mono">${p.line || '—'}</td>
+                    <td class="px-6 py-5"><span class="px-4 py-1 rounded-3xl text-xs ${p.side==='Over'?'bg-emerald-400 text-emerald-950':'bg-rose-400 text-rose-950'}">${p.side}</span></td>
+                    <td class="px-6 py-5 text-xs uppercase">${p.bookmaker}</td>
+                    <td class="px-6 py-5 text-right font-mono text-xl">${p.odds}</td>
+                    <td class="px-6 py-5 text-right font-mono">${americanToImplied(p.odds).toFixed(1)}%</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function switchTab(n) {
+            currentTab = n;
+            document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('tab-active', i === n));
+            renderCurrentTab();
+        }
+
+        window.onload = loadCachedData;
+    </script>
+</body>
+</html>
