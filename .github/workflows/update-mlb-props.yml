@@ -1,36 +1,33 @@
-name: Update MLB Props Every 5 Minutes
+name: Update MLB Props CSV
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/5 * * * *'     # every 5 minutes
   workflow_dispatch:
 
-# ←←← THIS IS THE FIX
 permissions:
   contents: write
-# ←←← THIS IS THE FIX
 
 jobs:
-  fetch-and-save:
+  update-csv:
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Fetch latest MLB props
+      - name: Generate fresh props.csv
         run: node scripts/update-props.js
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
 
-      - name: Commit & push updated data
+      - name: Commit & push updated CSV
         run: |
           git config user.name "925Sports Bot"
           git config user.email "bot@925sports.com"
-          git add data/props.json
-          git commit -m "Auto-update MLB props - $(date)" || echo "No changes"
+          git add data/props.csv
+          git commit -m "Auto-update props.csv - $(date)" || echo "No changes"
           git push
