@@ -1,7 +1,7 @@
 name: Update MLB Props CSV
 
 on:
-  workflow_dispatch:     # Only manual trigger for now
+  workflow_dispatch:     # Manual trigger only for now
 
 permissions:
   contents: write
@@ -10,22 +10,32 @@ jobs:
   update-csv:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Important for proper git history
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Generate fresh props.csv
+      - name: Run prop fetcher
         run: node scripts/update-props.js
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
 
-      - name: Commit & push updated CSV
+      - name: Commit and Push CSV
         run: |
           git config user.name "925Sports Bot"
           git config user.email "bot@925sports.com"
+          
           git add data/props.csv
-          git commit -m "Manual update props.csv - $(date)" || echo "No changes"
-          git push
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-update props.csv - $(date)"
+            git push
+            echo "✅ Successfully pushed updated props.csv"
+          fi
