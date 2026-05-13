@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 jobs:
-  update-csv:
+  update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,28 +17,19 @@ jobs:
         with:
           node-version: 22
 
-      - name: Generate fresh props.csv
+      - name: Generate props.csv
         run: node scripts/update-props.js
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
 
       - name: Send to Google Sheet
-        run: |
-          echo "CSV size: $(wc -c < data/props.csv) bytes"
-          echo "First 2 lines:"
-          head -n 2 data/props.csv
-          
-          echo "=== Sending to Google Sheet ==="
-          RESPONSE=$(curl -L -v -X POST \
-            -H "Content-Type: text/csv" \
-            --max-time 60 \
-            --data-binary @data/props.csv \
-            "${{ secrets.GOOGLE_WEBHOOK_URL }}")
-          
-          echo "=== FULL RESPONSE ==="
-          echo "$RESPONSE"
-        env:
-          GOOGLE_WEBHOOK_URL: https://script.google.com/macros/s/AKfycbxGdmSHuqHg2EyFSKOxU3tLkg6FjRXw7F3pztnDKO5YdadBbuzcVJyjMRN2s9xvA3Bd/exec
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: 'https://script.google.com/macros/s/AKfycbxGdmSHuqHg2EyFSKOxU3tLkg6FjRXw7F3pztnDKO5YdadBbuzcVJyjMRN2s9xvA3Bd/exec'
+          method: 'POST'
+          contentType: 'text/csv'
+          data: ${{ github.workspace }}/data/props.csv
+          files: '{ "file": "${{ github.workspace }}/data/props.csv" }'
 
       - name: Commit CSV
         run: |
