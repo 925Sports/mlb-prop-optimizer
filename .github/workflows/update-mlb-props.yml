@@ -1,7 +1,7 @@
 name: Update MLB Props CSV + Google Sheet
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:     # Manual for now
 
 permissions:
   contents: write
@@ -22,7 +22,7 @@ jobs:
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
 
-      - name: Send to Google Sheet
+      - name: Send data to Google Sheet
         run: |
           echo "Sending $(wc -c < data/props.csv) bytes to Google Sheet..."
           RESPONSE=$(curl -L -s -X POST \
