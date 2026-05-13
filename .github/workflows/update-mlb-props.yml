@@ -1,4 +1,4 @@
-name: Update MLB Props CSV + Google Sheet
+name: Update MLB Props + Google Sheet
 
 on:
   workflow_dispatch:
@@ -23,18 +23,9 @@ jobs:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
 
       - name: Send to Google Sheet
-        uses: fjogeleit/http-request-action@v1
-        with:
-          url: 'https://script.google.com/macros/s/AKfycbxGdmSHuqHg2EyFSKOxU3tLkg6FjRXw7F3pztnDKO5YdadBbuzcVJyjMRN2s9xvA3Bd/exec'
-          method: 'POST'
-          contentType: 'text/csv'
-          data: ${{ github.workspace }}/data/props.csv
-          files: '{ "file": "${{ github.workspace }}/data/props.csv" }'
-
-      - name: Commit CSV
         run: |
-          git config user.name "925Sports Bot"
-          git config user.email "bot@925sports.com"
-          git add data/props.csv
-          git commit -m "Auto-update props.csv - $(date)" || echo "No changes"
-          git push
+          echo "CSV size: $(wc -c < data/props.csv) bytes"
+          curl -L -X POST \
+            -H "Content-Type: text/csv" \
+            --data-binary @data/props.csv \
+            "https://script.google.com/macros/s/AKfycbxGdmSHuqHg2EyFSKOxU3tLkg6FjRXw7F3pztnDKO5YdadBbuzcVJyjMRN2s9xvA3Bd/exec"
