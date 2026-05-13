@@ -1,4 +1,4 @@
-name: Update MLB Props CSV + Google Sheet (Debug)
+name: Update MLB Props CSV + Google Sheet
 
 on:
   workflow_dispatch:
@@ -22,30 +22,18 @@ jobs:
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
 
-      - name: Send data to Google Sheet (with debug)
+      - name: Send to Google Sheet
         run: |
-          echo "=== Sending CSV to Google Sheet ==="
-          echo "CSV size: $(wc -c < data/props.csv) bytes"
-          echo "First 3 lines of CSV:"
-          head -n 3 data/props.csv
-          
-          RESPONSE=$(curl -v -X POST \
+          echo "Sending $(wc -c < data/props.csv) bytes to Google Sheet..."
+          RESPONSE=$(curl -L -s -X POST \
             -H "Content-Type: text/csv" \
             --data-binary @data/props.csv \
-            "${{ secrets.GOOGLE_WEBHOOK_URL }}" 2>&1)
-          
-          echo "=== Google Script Response ==="
-          echo "$RESPONSE"
-          
-          if echo "$RESPONSE" | grep -q "✅ SUCCESS"; then
-            echo "✅ Google Sheet updated successfully!"
-          else
-            echo "❌ Google Sheet update may have failed"
-          fi
+            "${{ secrets.GOOGLE_WEBHOOK_URL }}")
+          echo "Google Sheet Response: $RESPONSE"
         env:
           GOOGLE_WEBHOOK_URL: https://script.google.com/macros/s/AKfycbxGdmSHuqHg2EyFSKOxU3tLkg6FjRXw7F3pztnDKO5YdadBbuzcVJyjMRN2s9xvA3Bd/exec
 
-      - name: Commit & push CSV to GitHub
+      - name: Commit & push CSV
         run: |
           git config user.name "925Sports Bot"
           git config user.email "bot@925sports.com"
