@@ -1,7 +1,7 @@
 name: Update MLB Props CSV + Google Sheet
 
 on:
-  workflow_dispatch:     # Manual for now
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -22,18 +22,25 @@ jobs:
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
 
-      - name: Send data to Google Sheet
+      - name: Send to Google Sheet
         run: |
-          echo "Sending $(wc -c < data/props.csv) bytes to Google Sheet..."
-          RESPONSE=$(curl -L -s -X POST \
+          echo "CSV size: $(wc -c < data/props.csv) bytes"
+          echo "First 2 lines:"
+          head -n 2 data/props.csv
+          
+          echo "=== Sending to Google Sheet ==="
+          RESPONSE=$(curl -L -v -X POST \
             -H "Content-Type: text/csv" \
+            --max-time 60 \
             --data-binary @data/props.csv \
             "${{ secrets.GOOGLE_WEBHOOK_URL }}")
-          echo "Google Sheet Response: $RESPONSE"
+          
+          echo "=== FULL RESPONSE ==="
+          echo "$RESPONSE"
         env:
           GOOGLE_WEBHOOK_URL: https://script.google.com/macros/s/AKfycbxGdmSHuqHg2EyFSKOxU3tLkg6FjRXw7F3pztnDKO5YdadBbuzcVJyjMRN2s9xvA3Bd/exec
 
-      - name: Commit & push CSV
+      - name: Commit CSV
         run: |
           git config user.name "925Sports Bot"
           git config user.email "bot@925sports.com"
