@@ -20,23 +20,19 @@
                 <div class="text-5xl">⚾</div>
                 <h1 class="header-font text-5xl font-semibold tracking-tighter">MLB PROP OPTIMIZER</h1>
             </div>
-            <div class="text-emerald-400 font-medium">925Sports • props.csv • Auto-updates every 5 min</div>
+            <div class="text-emerald-400 font-medium">925Sports • Connected to props.csv</div>
         </div>
 
         <button onclick="loadProps()" class="mb-8 px-8 py-4 bg-emerald-400 text-slate-950 rounded-3xl font-semibold flex items-center gap-x-3">
             <i class="fa-solid fa-rotate"></i> REFRESH PROPS
         </button>
 
+        <div id="status" class="mb-6 p-4 bg-slate-900 rounded-3xl text-sm font-medium"></div>
+
         <div class="flex border-b border-slate-700 mb-6">
             <button onclick="switchTab(0)" id="tab-0" class="tab tab-active px-8 py-4 font-semibold text-xl flex-1">TRADITIONAL</button>
             <button onclick="switchTab(1)" id="tab-1" class="tab px-8 py-4 font-semibold text-xl flex-1">DFS</button>
             <button onclick="switchTab(2)" id="tab-2" class="tab px-8 py-4 font-semibold text-xl flex-1">EXCHANGES</button>
-        </div>
-
-        <div class="flex gap-4 mb-6">
-            <input id="search" type="text" placeholder="Search player or prop..." class="flex-1 bg-slate-900 border border-slate-700 rounded-3xl px-6 py-5" onkeyup="if(event.keyCode===13) filterTable()">
-            <button onclick="filterTable()" class="px-10 bg-slate-800 hover:bg-slate-700 rounded-3xl">FILTER</button>
-            <button onclick="exportCSV()" class="px-10 bg-slate-800 hover:bg-slate-700 rounded-3xl">DOWNLOAD CSV</button>
         </div>
 
         <table class="w-full bg-slate-900 rounded-3xl overflow-hidden">
@@ -65,30 +61,43 @@
         }
 
         async function loadProps() {
-            const res = await fetch('data/props.csv');
-            const text = await res.text();
-            const rows = text.trim().split('\n');
-            const headers = rows[0].split(',');
-            allProps = rows.slice(1).map(row => {
-                const values = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                return {
-                    away_team: values[5],
-                    home_team: values[4],
-                    description: values[8],
-                    market: values[6],
-                    label: values[7],
-                    price: parseFloat(values[9]),
-                    point: values[10] ? parseFloat(values[10]) : null,
-                    bookmaker: values[2]
-                };
-            }).filter(p => p.description && p.price);
+            const status = document.getElementById('status');
+            status.innerHTML = '🔄 Loading props.csv...';
 
-            renderCurrentTab();
+            const csvUrl = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/main/data/props.csv?' + Date.now();
+
+            try {
+                const res = await fetch(csvUrl);
+                if (!res.ok) throw new Error('Could not load CSV');
+
+                const text = await res.text();
+                const rows = text.trim().split('\n');
+
+                allProps = rows.slice(1).map(row => {
+                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    return {
+                        away_team: cols[5] || '',
+                        home_team: cols[4] || '',
+                        description: cols[8] || '',
+                        market: cols[6] || '',
+                        label: cols[7] || '',
+                        price: parseFloat(cols[9]),
+                        point: cols[10] ? parseFloat(cols[10]) : null,
+                        bookmaker: cols[2] || ''
+                    };
+                }).filter(p => p.description && !isNaN(p.price));
+
+                status.innerHTML = `✅ Loaded ${allProps.length} props successfully`;
+                renderCurrentTab();
+            } catch (e) {
+                status.innerHTML = `❌ Failed to load data<br><small>${e.message}</small><br><br>Make sure you are visiting the live page: <strong>https://925Sports.github.io/mlb-prop-optimizer</strong>`;
+            }
         }
 
         function renderCurrentTab() {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
+
             const filtered = allProps.filter(p => {
                 if (currentTab === 0) return true;
                 if (currentTab === 1) return p.bookmaker.toLowerCase().includes('draftkings') || p.bookmaker.toLowerCase().includes('fanduel');
@@ -96,7 +105,7 @@
                 return true;
             });
 
-            filtered.forEach(p => {
+            filtered.slice(0, 400).forEach(p => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800';
                 row.innerHTML = `
@@ -125,7 +134,7 @@
         }
 
         function exportCSV() {
-            window.location.href = 'data/props.csv';
+            window.location.href = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/main/data/props.csv';
         }
 
         window.onload = loadProps;
