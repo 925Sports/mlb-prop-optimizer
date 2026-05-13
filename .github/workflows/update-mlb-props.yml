@@ -1,7 +1,7 @@
-name: Update MLB Props CSV + Google Sheet
+name: Update MLB Props CSV + Google Sheet (Debug)
 
 on:
-  workflow_dispatch:     # Manual for now (we can add schedule later)
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -22,12 +22,26 @@ jobs:
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
 
-      - name: Upload to Google Sheet
+      - name: Send data to Google Sheet (with debug)
         run: |
-          curl -X POST \
+          echo "=== Sending CSV to Google Sheet ==="
+          echo "CSV size: $(wc -c < data/props.csv) bytes"
+          echo "First 3 lines of CSV:"
+          head -n 3 data/props.csv
+          
+          RESPONSE=$(curl -v -X POST \
             -H "Content-Type: text/csv" \
             --data-binary @data/props.csv \
-            "${{ secrets.GOOGLE_WEBHOOK_URL }}"
+            "${{ secrets.GOOGLE_WEBHOOK_URL }}" 2>&1)
+          
+          echo "=== Google Script Response ==="
+          echo "$RESPONSE"
+          
+          if echo "$RESPONSE" | grep -q "✅ SUCCESS"; then
+            echo "✅ Google Sheet updated successfully!"
+          else
+            echo "❌ Google Sheet update may have failed"
+          fi
         env:
           GOOGLE_WEBHOOK_URL: https://script.google.com/macros/s/AKfycbxGdmSHuqHg2EyFSKOxU3tLkg6FjRXw7F3pztnDKO5YdadBbuzcVJyjMRN2s9xvA3Bd/exec
 
