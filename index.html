@@ -20,7 +20,7 @@
                 <div class="text-5xl">⚾</div>
                 <h1 class="header-font text-5xl font-semibold tracking-tighter">MLB PROP OPTIMIZER</h1>
             </div>
-            <div class="text-emerald-400 font-medium">925Sports • Live CSV Data</div>
+            <div class="text-emerald-400 font-medium">925Sports • Live from GitHub CSV</div>
         </div>
 
         <button onclick="loadProps()" class="mb-8 px-8 py-4 bg-emerald-400 text-slate-950 rounded-3xl font-semibold flex items-center gap-x-3">
@@ -62,13 +62,13 @@
 
         async function loadProps() {
             const status = document.getElementById('status');
-            status.innerHTML = '🔄 Loading latest props.csv...';
+            status.innerHTML = '🔄 Loading from GitHub CSV...';
 
             const csvUrl = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/refs/heads/main/data/props.csv?' + Date.now();
 
             try {
                 const res = await fetch(csvUrl);
-                if (!res.ok) throw new Error('Failed to fetch CSV');
+                if (!res.ok) throw new Error('CSV not found');
 
                 const text = await res.text();
                 const rows = text.trim().split('\n');
@@ -90,7 +90,7 @@
                 status.innerHTML = `✅ Loaded ${allProps.length} props`;
                 renderCurrentTab();
             } catch (e) {
-                status.innerHTML = `❌ Error loading data<br><small>${e.message}</small>`;
+                status.innerHTML = `❌ Could not load CSV<br><small>${e.message}</small>`;
             }
         }
 
@@ -99,13 +99,13 @@
             tbody.innerHTML = '';
 
             const filtered = allProps.filter(p => {
-                if (currentTab === 0) return true;
-                if (currentTab === 1) return p.bookmaker.toLowerCase().includes('draftkings') || p.bookmaker.toLowerCase().includes('fanduel');
-                if (currentTab === 2) return p.bookmaker.toLowerCase().includes('pinnacle') || p.bookmaker.toLowerCase().includes('betfair');
+                if (currentTab === 0) return true; // Traditional
+                if (currentTab === 1) return p.bookmaker.toLowerCase().includes('draftkings') || p.bookmaker.toLowerCase().includes('fanduel') || p.bookmaker.toLowerCase().includes('prizepicks') || p.bookmaker.toLowerCase().includes('underdog');
+                if (currentTab === 2) return p.bookmaker.toLowerCase().includes('pinnacle') || p.bookmaker.toLowerCase().includes('betfair') || p.bookmaker.toLowerCase().includes('kalshi') || p.bookmaker.toLowerCase().includes('polymarket');
                 return true;
             });
 
-            filtered.slice(0, 400).forEach(p => {
+            filtered.slice(0, 500).forEach(p => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800';
                 row.innerHTML = `
@@ -131,10 +131,6 @@
         function filterTable() {
             const term = document.getElementById('search').value.toLowerCase();
             document.querySelectorAll('#table-body tr').forEach(r => r.style.display = r.textContent.toLowerCase().includes(term) ? '' : 'none');
-        }
-
-        function exportCSV() {
-            window.location.href = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/refs/heads/main/data/props.csv';
         }
 
         window.onload = loadProps;
