@@ -1,4 +1,4 @@
-name: Update MLB Props + Google Sheet
+name: Update MLB Props CSV
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 jobs:
-  update:
+  update-csv:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,15 +17,17 @@ jobs:
         with:
           node-version: 22
 
-      - name: Generate props.csv
+      - name: Generate fresh props.csv
         run: node scripts/update-props.js
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
 
-      - name: Send to Google Sheet
+      - name: Force commit and push CSV
         run: |
-          echo "CSV size: $(wc -c < data/props.csv) bytes"
-          curl -L -X POST \
-            -H "Content-Type: text/csv" \
-            --data-binary @data/props.csv \
-            "https://script.google.com/macros/s/AKfycbxGdmSHuqHg2EyFSKOxU3tLkg6FjRXw7F3pztnDKO5YdadBbuzcVJyjMRN2s9xvA3Bd/exec"
+          git config user.name "925Sports Bot"
+          git config user.email "bot@925sports.com"
+          
+          # Force add and commit even if no changes detected
+          git add data/props.csv
+          git commit -m "Updated props.csv - $(date +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes detected - forcing commit"
+          git push
