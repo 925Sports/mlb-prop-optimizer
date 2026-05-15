@@ -11,6 +11,8 @@
         body { font-family: 'Inter', sans-serif; }
         .header-font { font-family: 'Space Grotesk', sans-serif; }
         .tab-active { border-bottom: 3px solid #00d4ff; color: #00d4ff; }
+        th { cursor: pointer; }
+        th:hover { background-color: #1e2937; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-200">
@@ -51,10 +53,10 @@
                     <th class="text-left py-5 px-6">LINE</th>
                     <th class="text-left py-5 px-6">SIDE</th>
                     <th class="text-left py-5 px-6">BOOKMAKER</th>
-                    <th class="text-right py-5 px-6">BEST ODDS</th>
-                    <th class="text-right py-5 px-6">AVG ODDS</th>
-                    <th class="text-right py-5 px-6">AVG IMPLIED %</th>
-                    <th class="text-right py-5 px-6">EDGE vs AVG</th>
+                    <th onclick="sortTable(6)" class="text-right py-5 px-6">BEST ODDS</th>
+                    <th onclick="sortTable(7)" class="text-right py-5 px-6">AVG ODDS</th>
+                    <th onclick="sortTable(8)" class="text-right py-5 px-6">AVG IMPLIED %</th>
+                    <th onclick="sortTable(9)" class="text-right py-5 px-6">EDGE vs AVG</th>
                 </tr>
             </thead>
             <tbody id="table-body" class="divide-y divide-slate-700 text-sm"></tbody>
@@ -64,6 +66,7 @@
     <script>
         let allProps = [];
         let currentTab = 0;
+        let sortDirection = 1; // 1 = descending, -1 = ascending
 
         function americanToImplied(odds) {
             return odds > 0 ? (100 / (odds + 100)) * 100 : (Math.abs(odds) / (Math.abs(odds) + 100)) * 100;
@@ -122,16 +125,18 @@
             let filtered = allProps.filter(p => {
                 const book = p.bookmaker.toLowerCase();
 
-                if (currentTab === 0) { // TRADITIONAL - exclude DFS and Exchanges
+                if (currentTab === 0) { // TRADITIONAL
                     return !book.includes('prizepicks') && !book.includes('underdog') && 
                            !book.includes('betr_us_dfs') && !book.includes('pick6') &&
+                           !book.includes('fliff') && !book.includes('dabble_us_dfs') &&
                            !book.includes('pinnacle') && !book.includes('betfair') && 
                            !book.includes('kalshi') && !book.includes('polymarket');
                 }
                 if (currentTab === 1) { // DFS
                     return book.includes('draftkings') || book.includes('fanduel') || 
                            book.includes('prizepicks') || book.includes('underdog') || 
-                           book.includes('betr_us_dfs') || book.includes('pick6');
+                           book.includes('betr_us_dfs') || book.includes('pick6') ||
+                           book.includes('fliff') || book.includes('dabble_us_dfs');
                 }
                 if (currentTab === 2) { // EXCHANGES
                     return book.includes('pinnacle') || book.includes('betfair') || 
@@ -143,7 +148,6 @@
                 return true;
             });
 
-            // Add edge and average data
             filtered = filtered.map(p => {
                 const key = `${p.away_team}@${p.home_team}|${p.description}|${p.market}|${p.point}|${p.label}`;
                 const avgOdds = averages[key] ? averages[key].reduce((a, b) => a + b, 0) / averages[key].length : p.price;
@@ -153,7 +157,6 @@
                 return { ...p, edge, avgOdds, avgImplied };
             });
 
-            // Sort by best edge (highest first)
             filtered.sort((a, b) => b.edge - a.edge);
 
             filtered.slice(0, 800).forEach(p => {
@@ -189,6 +192,21 @@
             const term = document.getElementById('search').value.toLowerCase().trim();
             const rows = document.querySelectorAll('#table-body tr');
             rows.forEach(r => r.style.display = r.textContent.toLowerCase().includes(term) ? '' : 'none');
+        }
+
+        // Column sorting
+        function sortTable(colIndex) {
+            const tbody = document.getElementById('table-body');
+            let rows = Array.from(tbody.rows);
+
+            rows.sort((a, b) => {
+                let valA = a.cells[colIndex].textContent.replace(/[^0-9.-]/g, '');
+                let valB = b.cells[colIndex].textContent.replace(/[^0-9.-]/g, '');
+                return (parseFloat(valB) - parseFloat(valA)) * sortDirection;
+            });
+
+            sortDirection *= -1;
+            rows.forEach(row => tbody.appendChild(row));
         }
 
         window.onload = loadProps;
