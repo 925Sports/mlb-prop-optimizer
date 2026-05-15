@@ -29,14 +29,12 @@
 
         <div id="status" class="mb-6 p-4 bg-slate-900 rounded-3xl text-sm font-medium"></div>
 
-        <!-- Search bar -->
         <div class="mb-6">
             <input id="search" type="text" placeholder="Search game, player, or prop..." 
                    class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-6 py-5 text-lg outline-none focus:border-cyan-400"
                    onkeyup="if(event.keyCode===13) filterTable()">
         </div>
 
-        <!-- 4 TABS -->
         <div class="flex border-b border-slate-700 mb-6">
             <button onclick="switchTab(0)" id="tab-0" class="tab tab-active px-8 py-4 font-semibold text-xl flex-1">TRADITIONAL</button>
             <button onclick="switchTab(1)" id="tab-1" class="tab px-8 py-4 font-semibold text-xl flex-1">DFS</button>
@@ -72,7 +70,7 @@
 
         async function loadProps() {
             const status = document.getElementById('status');
-            status.innerHTML = '🔄 Loading CSV from GitHub...';
+            status.innerHTML = '🔄 Loading CSV...';
 
             const csvUrl = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/refs/heads/main/data/props.csv?' + Date.now();
 
@@ -104,15 +102,14 @@
             }
         }
 
-        // Calculate average odds for each unique bet
         function calculateAverages() {
-            const averages = {};
+            const map = {};
             allProps.forEach(p => {
                 const key = `${p.away_team}@${p.home_team}|${p.description}|${p.market}|${p.point}|${p.label}`;
-                if (!averages[key]) averages[key] = [];
-                averages[key].push(p.price);
+                if (!map[key]) map[key] = [];
+                map[key].push(p.price);
             });
-            return averages;
+            return map;
         }
 
         function renderCurrentTab() {
@@ -121,23 +118,32 @@
 
             const averages = calculateAverages();
 
-            const filtered = allProps.filter(p => {
+            let filtered = allProps.filter(p => {
                 const book = p.bookmaker.toLowerCase();
                 if (currentTab === 0) return true;
                 if (currentTab === 1) return book.includes('draftkings') || book.includes('fanduel') || book.includes('prizepicks') || book.includes('underdog');
                 if (currentTab === 2) return book.includes('pinnacle') || book.includes('betfair') || book.includes('kalshi') || book.includes('polymarket');
-                if (currentTab === 3) return true; // Advanced shows everything
+                if (currentTab === 3) return true;
                 return true;
             });
 
-            filtered.slice(0, 800).forEach(p => {
-                const implied = americanToImplied(p.price);
+            // Calculate edge for each row
+            filtered = filtered.map(p => {
                 const key = `${p.away_team}@${p.home_team}|${p.description}|${p.market}|${p.point}|${p.label}`;
                 const avgOdds = averages[key] ? averages[key].reduce((a, b) => a + b, 0) / averages[key].length : p.price;
+                const implied = americanToImplied(p.price);
                 const avgImplied = americanToImplied(avgOdds);
+                const edge = (implied - avgImplied);
+                return { ...p, edge: edge };
+            });
 
-                // Simple edge: how much better this book is vs average (positive = good)
-                const edge = (implied - avgImplied).toFixed(1);
+            // Sort by best edge (highest first)
+            filtered.sort((a, b) => b.edge - a.edge);
+
+            filtered.slice(0, 800).forEach(p => {
+                const implied = americanToImplied(p.price);
+                const edgeDisplay = p.edge.toFixed(1);
+                const isPositive = p.edge > 0;
 
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800';
@@ -150,7 +156,7 @@
                     <td class="px-6 py-5 text-xs uppercase">${p.bookmaker}</td>
                     <td class="px-6 py-5 text-right font-mono text-2xl">${p.price}</td>
                     <td class="px-6 py-5 text-right font-mono">${implied.toFixed(1)}%</td>
-                    <td class="px-6 py-5 text-right font-medium ${edge > 0 ? 'text-emerald-400' : 'text-rose-400'}">${edge > 0 ? '+' : ''}${edge}%</td>
+                    <td class="px-6 py-5 text-right font-medium ${isPositive ? 'text-emerald-400' : 'text-rose-400'}">${isPositive ? '+' : ''}${edgeDisplay}%</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -165,9 +171,7 @@
         function filterTable() {
             const term = document.getElementById('search').value.toLowerCase().trim();
             const rows = document.querySelectorAll('#table-body tr');
-            rows.forEach(row => {
-                row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
-            });
+            rows.forEach(r => r.style.display = r.textContent.toLowerCase().includes(term) ? '' : 'none');
         }
 
         window.onload = loadProps;
