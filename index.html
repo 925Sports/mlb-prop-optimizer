@@ -29,6 +29,13 @@
 
         <div id="status" class="mb-6 p-4 bg-slate-900 rounded-3xl text-sm font-medium"></div>
 
+        <!-- Search bar -->
+        <div class="mb-6">
+            <input id="search" type="text" placeholder="Search game, player, or prop..." 
+                   class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-6 py-5 text-lg outline-none focus:border-cyan-400"
+                   onkeyup="if(event.keyCode===13) filterTable()">
+        </div>
+
         <!-- 4 TABS -->
         <div class="flex border-b border-slate-700 mb-6">
             <button onclick="switchTab(0)" id="tab-0" class="tab tab-active px-8 py-4 font-semibold text-xl flex-1">TRADITIONAL</button>
@@ -48,7 +55,7 @@
                     <th class="text-left py-5 px-6">BOOKMAKER</th>
                     <th class="text-right py-5 px-6">ODDS</th>
                     <th class="text-right py-5 px-6">IMPLIED %</th>
-                    <th class="text-right py-5 px-6">EDGE</th>
+                    <th class="text-right py-5 px-6">EDGE vs AVG</th>
                 </tr>
             </thead>
             <tbody id="table-body" class="divide-y divide-slate-700 text-sm"></tbody>
@@ -76,7 +83,6 @@
                 const text = await res.text();
                 const rows = text.trim().split('\n');
 
-                // Most reliable parser for your CSV
                 allProps = rows.slice(1).map(row => {
                     const cols = row.split('","').map(c => c.replace(/^"|"$/g, '').trim());
                     return {
@@ -94,25 +100,45 @@
                 status.innerHTML = `✅ Loaded ${allProps.length} props`;
                 renderCurrentTab();
             } catch (e) {
-                status.innerHTML = `❌ Error loading CSV<br><small>${e.message}</small>`;
+                status.innerHTML = `❌ Error loading CSV`;
             }
+        }
+
+        // Calculate average odds for each unique bet
+        function calculateAverages() {
+            const averages = {};
+            allProps.forEach(p => {
+                const key = `${p.away_team}@${p.home_team}|${p.description}|${p.market}|${p.point}|${p.label}`;
+                if (!averages[key]) averages[key] = [];
+                averages[key].push(p.price);
+            });
+            return averages;
         }
 
         function renderCurrentTab() {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
+            const averages = calculateAverages();
+
             const filtered = allProps.filter(p => {
                 const book = p.bookmaker.toLowerCase();
-                if (currentTab === 0) return true;                    // Traditional
+                if (currentTab === 0) return true;
                 if (currentTab === 1) return book.includes('draftkings') || book.includes('fanduel') || book.includes('prizepicks') || book.includes('underdog');
                 if (currentTab === 2) return book.includes('pinnacle') || book.includes('betfair') || book.includes('kalshi') || book.includes('polymarket');
-                if (currentTab === 3) return true;                    // Advanced = everything
+                if (currentTab === 3) return true; // Advanced shows everything
                 return true;
             });
 
-            filtered.slice(0, 600).forEach(p => {
+            filtered.slice(0, 800).forEach(p => {
                 const implied = americanToImplied(p.price);
+                const key = `${p.away_team}@${p.home_team}|${p.description}|${p.market}|${p.point}|${p.label}`;
+                const avgOdds = averages[key] ? averages[key].reduce((a, b) => a + b, 0) / averages[key].length : p.price;
+                const avgImplied = americanToImplied(avgOdds);
+
+                // Simple edge: how much better this book is vs average (positive = good)
+                const edge = (implied - avgImplied).toFixed(1);
+
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800';
                 row.innerHTML = `
@@ -124,9 +150,7 @@
                     <td class="px-6 py-5 text-xs uppercase">${p.bookmaker}</td>
                     <td class="px-6 py-5 text-right font-mono text-2xl">${p.price}</td>
                     <td class="px-6 py-5 text-right font-mono">${implied.toFixed(1)}%</td>
-                    <td class="px-6 py-5 text-right">
-                        <button onclick="event.stopImmediatePropagation(); alert('EV Calculator - Your projected probability? (Next update)')" class="px-5 py-1 text-xs bg-cyan-400 hover:bg-cyan-300 text-slate-950 rounded-3xl">CALC EDGE</button>
-                    </td>
+                    <td class="px-6 py-5 text-right font-medium ${edge > 0 ? 'text-emerald-400' : 'text-rose-400'}">${edge > 0 ? '+' : ''}${edge}%</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -136,6 +160,14 @@
             currentTab = n;
             document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('tab-active', i===n));
             renderCurrentTab();
+        }
+
+        function filterTable() {
+            const term = document.getElementById('search').value.toLowerCase().trim();
+            const rows = document.querySelectorAll('#table-body tr');
+            rows.forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
+            });
         }
 
         window.onload = loadProps;
