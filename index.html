@@ -121,10 +121,25 @@
 
             let filtered = allProps.filter(p => {
                 const book = p.bookmaker.toLowerCase();
-                if (currentTab === 0) return true; // Traditional
-                if (currentTab === 1) return book.includes('draftkings') || book.includes('fanduel') || book.includes('prizepicks') || book.includes('underdog') || book.includes('betr_us_dfs') || book.includes('pick6');
-                if (currentTab === 2) return book.includes('pinnacle') || book.includes('betfair') || book.includes('kalshi') || book.includes('polymarket');
-                if (currentTab === 3) return true; // Advanced
+
+                if (currentTab === 0) { // TRADITIONAL - exclude DFS and Exchanges
+                    return !book.includes('prizepicks') && !book.includes('underdog') && 
+                           !book.includes('betr_us_dfs') && !book.includes('pick6') &&
+                           !book.includes('pinnacle') && !book.includes('betfair') && 
+                           !book.includes('kalshi') && !book.includes('polymarket');
+                }
+                if (currentTab === 1) { // DFS
+                    return book.includes('draftkings') || book.includes('fanduel') || 
+                           book.includes('prizepicks') || book.includes('underdog') || 
+                           book.includes('betr_us_dfs') || book.includes('pick6');
+                }
+                if (currentTab === 2) { // EXCHANGES
+                    return book.includes('pinnacle') || book.includes('betfair') || 
+                           book.includes('kalshi') || book.includes('polymarket') || 
+                           book.includes('prophetx') || book.includes('novig') || 
+                           book.includes('betopenly');
+                }
+                if (currentTab === 3) return true; // ADVANCED - everything
                 return true;
             });
 
