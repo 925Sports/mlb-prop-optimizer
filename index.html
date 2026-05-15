@@ -57,6 +57,7 @@
                     <th onclick="sortTable(7)" class="text-right py-5 px-6">AVG ODDS</th>
                     <th onclick="sortTable(8)" class="text-right py-5 px-6">AVG IMPLIED %</th>
                     <th onclick="sortTable(9)" class="text-right py-5 px-6">EDGE vs AVG</th>
+                    <th onclick="sortTable(10)" class="text-right py-5 px-6">+EV</th>
                 </tr>
             </thead>
             <tbody id="table-body" class="divide-y divide-slate-700 text-sm"></tbody>
@@ -66,7 +67,7 @@
     <script>
         let allProps = [];
         let currentTab = 0;
-        let sortDirection = 1; // 1 = descending, -1 = ascending
+        let sortDirection = 1;
 
         function americanToImplied(odds) {
             return odds > 0 ? (100 / (odds + 100)) * 100 : (Math.abs(odds) / (Math.abs(odds) + 100)) * 100;
@@ -144,7 +145,7 @@
                            book.includes('prophetx') || book.includes('novig') || 
                            book.includes('betopenly');
                 }
-                if (currentTab === 3) return true; // ADVANCED - everything
+                if (currentTab === 3) return true; // ADVANCED
                 return true;
             });
 
@@ -177,6 +178,7 @@
                     <td class="px-6 py-5 text-right font-mono">${p.avgOdds.toFixed(1)}</td>
                     <td class="px-6 py-5 text-right font-mono">${p.avgImplied.toFixed(1)}%</td>
                     <td class="px-6 py-5 text-right font-medium ${isPositive ? 'text-emerald-400' : 'text-rose-400'}">${isPositive ? '+' : ''}${edgeDisplay}%</td>
+                    <td class="px-6 py-5 text-right font-medium ${isPositive ? 'text-emerald-400' : 'text-rose-400'}">${isPositive ? '+' : ''}${edgeDisplay}%</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -194,17 +196,14 @@
             rows.forEach(r => r.style.display = r.textContent.toLowerCase().includes(term) ? '' : 'none');
         }
 
-        // Column sorting
         function sortTable(colIndex) {
             const tbody = document.getElementById('table-body');
             let rows = Array.from(tbody.rows);
-
             rows.sort((a, b) => {
                 let valA = a.cells[colIndex].textContent.replace(/[^0-9.-]/g, '');
                 let valB = b.cells[colIndex].textContent.replace(/[^0-9.-]/g, '');
                 return (parseFloat(valB) - parseFloat(valA)) * sortDirection;
             });
-
             sortDirection *= -1;
             rows.forEach(row => tbody.appendChild(row));
         }
