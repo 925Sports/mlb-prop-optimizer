@@ -51,8 +51,9 @@
                     <th class="text-left py-5 px-6">LINE</th>
                     <th class="text-left py-5 px-6">SIDE</th>
                     <th class="text-left py-5 px-6">BOOKMAKER</th>
-                    <th class="text-right py-5 px-6">ODDS</th>
-                    <th class="text-right py-5 px-6">IMPLIED %</th>
+                    <th class="text-right py-5 px-6">BEST ODDS</th>
+                    <th class="text-right py-5 px-6">AVG ODDS</th>
+                    <th class="text-right py-5 px-6">AVG IMPLIED %</th>
                     <th class="text-right py-5 px-6">EDGE vs AVG</th>
                 </tr>
             </thead>
@@ -70,7 +71,7 @@
 
         async function loadProps() {
             const status = document.getElementById('status');
-            status.innerHTML = '🔄 Loading CSV...';
+            status.innerHTML = '🔄 Loading CSV from GitHub...';
 
             const csvUrl = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/refs/heads/main/data/props.csv?' + Date.now();
 
@@ -120,21 +121,21 @@
 
             let filtered = allProps.filter(p => {
                 const book = p.bookmaker.toLowerCase();
-                if (currentTab === 0) return true;
-                if (currentTab === 1) return book.includes('draftkings') || book.includes('fanduel') || book.includes('prizepicks') || book.includes('underdog');
+                if (currentTab === 0) return true; // Traditional
+                if (currentTab === 1) return book.includes('draftkings') || book.includes('fanduel') || book.includes('prizepicks') || book.includes('underdog') || book.includes('betr_us_dfs') || book.includes('pick6');
                 if (currentTab === 2) return book.includes('pinnacle') || book.includes('betfair') || book.includes('kalshi') || book.includes('polymarket');
-                if (currentTab === 3) return true;
+                if (currentTab === 3) return true; // Advanced
                 return true;
             });
 
-            // Calculate edge for each row
+            // Add edge and average data
             filtered = filtered.map(p => {
                 const key = `${p.away_team}@${p.home_team}|${p.description}|${p.market}|${p.point}|${p.label}`;
                 const avgOdds = averages[key] ? averages[key].reduce((a, b) => a + b, 0) / averages[key].length : p.price;
                 const implied = americanToImplied(p.price);
                 const avgImplied = americanToImplied(avgOdds);
                 const edge = (implied - avgImplied);
-                return { ...p, edge: edge };
+                return { ...p, edge, avgOdds, avgImplied };
             });
 
             // Sort by best edge (highest first)
@@ -155,7 +156,8 @@
                     <td class="px-6 py-5"><span class="px-4 py-1 text-xs font-bold rounded-3xl ${p.label==='Over'?'bg-emerald-400 text-emerald-950':'bg-rose-400 text-rose-950'}">${p.label}</span></td>
                     <td class="px-6 py-5 text-xs uppercase">${p.bookmaker}</td>
                     <td class="px-6 py-5 text-right font-mono text-2xl">${p.price}</td>
-                    <td class="px-6 py-5 text-right font-mono">${implied.toFixed(1)}%</td>
+                    <td class="px-6 py-5 text-right font-mono">${p.avgOdds.toFixed(1)}</td>
+                    <td class="px-6 py-5 text-right font-mono">${p.avgImplied.toFixed(1)}%</td>
                     <td class="px-6 py-5 text-right font-medium ${isPositive ? 'text-emerald-400' : 'text-rose-400'}">${isPositive ? '+' : ''}${edgeDisplay}%</td>
                 `;
                 tbody.appendChild(row);
