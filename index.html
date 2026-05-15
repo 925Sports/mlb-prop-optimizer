@@ -65,7 +65,7 @@
 
         async function loadProps() {
             const status = document.getElementById('status');
-            status.innerHTML = '🔄 Loading props.csv...';
+            status.innerHTML = '🔄 Loading CSV from GitHub...';
 
             const csvUrl = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/refs/heads/main/data/props.csv?' + Date.now();
 
@@ -76,8 +76,9 @@
                 const text = await res.text();
                 const rows = text.trim().split('\n');
 
+                // Most reliable parser for your CSV
                 allProps = rows.slice(1).map(row => {
-                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    const cols = row.split('","').map(c => c.replace(/^"|"$/g, '').trim());
                     return {
                         away_team: cols[5] || '',
                         home_team: cols[4] || '',
@@ -93,7 +94,7 @@
                 status.innerHTML = `✅ Loaded ${allProps.length} props`;
                 renderCurrentTab();
             } catch (e) {
-                status.innerHTML = `❌ Error loading CSV`;
+                status.innerHTML = `❌ Error loading CSV<br><small>${e.message}</small>`;
             }
         }
 
@@ -124,7 +125,7 @@
                     <td class="px-6 py-5 text-right font-mono text-2xl">${p.price}</td>
                     <td class="px-6 py-5 text-right font-mono">${implied.toFixed(1)}%</td>
                     <td class="px-6 py-5 text-right">
-                        <button onclick="event.stopImmediatePropagation(); alert('EV / Edge Calculator coming in next update')" class="px-5 py-1 text-xs bg-cyan-400 hover:bg-cyan-300 text-slate-950 rounded-3xl">CALC EDGE</button>
+                        <button onclick="event.stopImmediatePropagation(); alert('EV Calculator - Your projected probability? (Next update)')" class="px-5 py-1 text-xs bg-cyan-400 hover:bg-cyan-300 text-slate-950 rounded-3xl">CALC EDGE</button>
                     </td>
                 `;
                 tbody.appendChild(row);
