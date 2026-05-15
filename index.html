@@ -31,10 +31,26 @@
 
         <div id="status" class="mb-6 p-4 bg-slate-900 rounded-3xl text-sm font-medium"></div>
 
-        <div class="mb-6">
-            <input id="search" type="text" placeholder="Search game, player, or prop..." 
-                   class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-6 py-5 text-lg outline-none focus:border-cyan-400"
-                   onkeyup="if(event.keyCode===13) filterTable()">
+        <!-- Filters -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div>
+                <label class="text-xs text-slate-400 block mb-1">MARKET</label>
+                <select id="marketFilter" onchange="renderCurrentTab()" class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-5 py-3 text-sm">
+                    <option value="">All Markets</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs text-slate-400 block mb-1">GAME</label>
+                <select id="gameFilter" onchange="renderCurrentTab()" class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-5 py-3 text-sm">
+                    <option value="">All Games</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-xs text-slate-400 block mb-1">BOOKMAKER</label>
+                <select id="bookFilter" onchange="renderCurrentTab()" class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-5 py-3 text-sm">
+                    <option value="">All Books</option>
+                </select>
+            </div>
         </div>
 
         <div class="flex border-b border-slate-700 mb-6">
@@ -100,11 +116,47 @@
                     };
                 }).filter(p => p.description && !isNaN(p.price));
 
+                populateFilters();
                 status.innerHTML = `✅ Loaded ${allProps.length} props`;
                 renderCurrentTab();
             } catch (e) {
                 status.innerHTML = `❌ Error loading CSV`;
             }
+        }
+
+        function populateFilters() {
+            // Market filter
+            const marketSet = new Set(allProps.map(p => p.market));
+            const marketSelect = document.getElementById('marketFilter');
+            marketSelect.innerHTML = '<option value="">All Markets</option>';
+            Array.from(marketSet).sort().forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m.replace(/_/g, ' ').toUpperCase();
+                marketSelect.appendChild(opt);
+            });
+
+            // Game filter
+            const gameSet = new Set(allProps.map(p => `${p.away_team} @ ${p.home_team}`));
+            const gameSelect = document.getElementById('gameFilter');
+            gameSelect.innerHTML = '<option value="">All Games</option>';
+            Array.from(gameSet).sort().forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g;
+                opt.textContent = g;
+                gameSelect.appendChild(opt);
+            });
+
+            // Bookmaker filter
+            const bookSet = new Set(allProps.map(p => p.bookmaker));
+            const bookSelect = document.getElementById('bookFilter');
+            bookSelect.innerHTML = '<option value="">All Books</option>';
+            Array.from(bookSet).sort().forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b;
+                opt.textContent = b;
+                bookSelect.appendChild(opt);
+            });
         }
 
         function calculateAverages() {
@@ -121,11 +173,17 @@
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
+            const marketFilter = document.getElementById('marketFilter').value;
+            const gameFilter = document.getElementById('gameFilter').value;
+            const bookFilter = document.getElementById('bookFilter').value;
+
             const averages = calculateAverages();
 
             let filtered = allProps.filter(p => {
                 const book = p.bookmaker.toLowerCase();
+                const gameStr = `${p.away_team} @ ${p.home_team}`;
 
+                // Tab filtering
                 if (currentTab === 0) { // TRADITIONAL
                     return !book.includes('prizepicks') && !book.includes('underdog') && 
                            !book.includes('betr_us_dfs') && !book.includes('pick6') &&
@@ -146,8 +204,14 @@
                            book.includes('betopenly');
                 }
                 if (currentTab === 3) return true; // ADVANCED
+
                 return true;
             });
+
+            // Apply dropdown filters
+            if (marketFilter) filtered = filtered.filter(p => p.market === marketFilter);
+            if (gameFilter) filtered = filtered.filter(p => `${p.away_team} @ ${p.home_team}` === gameFilter);
+            if (bookFilter) filtered = filtered.filter(p => p.bookmaker === bookFilter);
 
             filtered = filtered.map(p => {
                 const key = `${p.away_team}@${p.home_team}|${p.description}|${p.market}|${p.point}|${p.label}`;
@@ -191,9 +255,7 @@
         }
 
         function filterTable() {
-            const term = document.getElementById('search').value.toLowerCase().trim();
-            const rows = document.querySelectorAll('#table-body tr');
-            rows.forEach(r => r.style.display = r.textContent.toLowerCase().includes(term) ? '' : 'none');
+            renderCurrentTab();
         }
 
         function sortTable(colIndex) {
