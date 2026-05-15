@@ -20,7 +20,7 @@
                 <div class="text-5xl">⚾</div>
                 <h1 class="header-font text-5xl font-semibold tracking-tighter">MLB PROP OPTIMIZER</h1>
             </div>
-            <div class="text-emerald-400 font-medium">925Sports • Live from GitHub CSV</div>
+            <div class="text-emerald-400 font-medium">925Sports • Live CSV</div>
         </div>
 
         <button onclick="loadProps()" class="mb-8 px-8 py-4 bg-emerald-400 text-slate-950 rounded-3xl font-semibold flex items-center gap-x-3">
@@ -33,7 +33,6 @@
             <button onclick="switchTab(0)" id="tab-0" class="tab tab-active px-8 py-4 font-semibold text-xl flex-1">TRADITIONAL</button>
             <button onclick="switchTab(1)" id="tab-1" class="tab px-8 py-4 font-semibold text-xl flex-1">DFS</button>
             <button onclick="switchTab(2)" id="tab-2" class="tab px-8 py-4 font-semibold text-xl flex-1">EXCHANGES</button>
-            <button onclick="switchTab(3)" id="tab-3" class="tab px-8 py-4 font-semibold text-xl flex-1">ADVANCED</button>
         </div>
 
         <table class="w-full bg-slate-900 rounded-3xl overflow-hidden">
@@ -47,7 +46,6 @@
                     <th class="text-left py-5 px-6">BOOKMAKER</th>
                     <th class="text-right py-5 px-6">ODDS</th>
                     <th class="text-right py-5 px-6">IMPLIED %</th>
-                    <th class="text-right py-5 px-6 w-28" id="edge-header">EDGE</th>
                 </tr>
             </thead>
             <tbody id="table-body" class="divide-y divide-slate-700 text-sm"></tbody>
@@ -64,19 +62,20 @@
 
         async function loadProps() {
             const status = document.getElementById('status');
-            status.innerHTML = '🔄 Loading props.csv from GitHub...';
+            status.innerHTML = '🔄 Loading CSV from GitHub...';
 
             const csvUrl = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/refs/heads/main/data/props.csv?' + Date.now();
 
             try {
                 const res = await fetch(csvUrl);
-                if (!res.ok) throw new Error('CSV not found');
+                if (!res.ok) throw new Error('CSV not found (404)');
 
                 const text = await res.text();
-                const rows = text.trim().split('\n');
+                const lines = text.trim().split('\n');
 
-                allProps = rows.slice(1).map(row => {
-                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                // Better CSV parser for quoted fields
+                allProps = lines.slice(1).map(line => {
+                    const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
                     return {
                         away_team: cols[5] || '',
                         home_team: cols[4] || '',
@@ -89,10 +88,11 @@
                     };
                 }).filter(p => p.description && !isNaN(p.price));
 
-                status.innerHTML = `✅ Loaded ${allProps.length} props`;
+                status.innerHTML = `✅ Successfully loaded ${allProps.length} props`;
                 renderCurrentTab();
             } catch (e) {
-                status.innerHTML = `❌ Error loading CSV`;
+                status.innerHTML = `❌ Failed to load CSV<br><small>${e.message}</small>`;
+                console.error(e);
             }
         }
 
@@ -102,15 +102,13 @@
 
             const filtered = allProps.filter(p => {
                 const book = p.bookmaker.toLowerCase();
-                if (currentTab === 0) return true; // Traditional
+                if (currentTab === 0) return true;
                 if (currentTab === 1) return book.includes('draftkings') || book.includes('fanduel') || book.includes('prizepicks') || book.includes('underdog');
                 if (currentTab === 2) return book.includes('pinnacle') || book.includes('betfair') || book.includes('kalshi') || book.includes('polymarket');
-                if (currentTab === 3) return true; // Advanced shows everything
                 return true;
             });
 
-            filtered.slice(0, 600).forEach(p => {
-                const implied = americanToImplied(p.price);
+            filtered.slice(0, 500).forEach(p => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800';
                 row.innerHTML = `
@@ -121,10 +119,7 @@
                     <td class="px-6 py-5"><span class="px-4 py-1 text-xs font-bold rounded-3xl ${p.label==='Over'?'bg-emerald-400 text-emerald-950':'bg-rose-400 text-rose-950'}">${p.label}</span></td>
                     <td class="px-6 py-5 text-xs uppercase">${p.bookmaker}</td>
                     <td class="px-6 py-5 text-right font-mono text-2xl">${p.price}</td>
-                    <td class="px-6 py-5 text-right font-mono">${implied.toFixed(1)}%</td>
-                    <td class="px-6 py-5 text-right">
-                        <button onclick="event.stopImmediatePropagation(); alert('Edge Calculator - Your projected probability for this side? (Next update)')" class="px-4 py-1 text-xs bg-cyan-400 text-slate-950 rounded-3xl hover:bg-cyan-300">CALC EDGE</button>
-                    </td>
+                    <td class="px-6 py-5 text-right font-mono">${americanToImplied(p.price).toFixed(1)}%</td>
                 `;
                 tbody.appendChild(row);
             });
