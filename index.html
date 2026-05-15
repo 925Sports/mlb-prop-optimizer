@@ -20,7 +20,7 @@
                 <div class="text-5xl">⚾</div>
                 <h1 class="header-font text-5xl font-semibold tracking-tighter">MLB PROP OPTIMIZER</h1>
             </div>
-            <div class="text-emerald-400 font-medium">925Sports • Live from GitHub CSV</div>
+            <div class="text-emerald-400 font-medium">925Sports • Connected to props.csv</div>
         </div>
 
         <button onclick="loadProps()" class="mb-8 px-8 py-4 bg-emerald-400 text-slate-950 rounded-3xl font-semibold flex items-center gap-x-3">
@@ -62,19 +62,20 @@
 
         async function loadProps() {
             const status = document.getElementById('status');
-            status.innerHTML = '🔄 Loading props.csv...';
+            status.innerHTML = '🔄 Loading props from GitHub CSV...';
 
             const csvUrl = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/refs/heads/main/data/props.csv?' + Date.now();
 
             try {
                 const res = await fetch(csvUrl);
-                if (!res.ok) throw new Error('CSV not found');
+                if (!res.ok) throw new Error('CSV file not found');
 
                 const text = await res.text();
                 const rows = text.trim().split('\n');
 
+                // Simple and robust parser
                 allProps = rows.slice(1).map(row => {
-                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    const cols = row.split('","').map(s => s.replace(/^"|"$/g, ''));
                     return {
                         away_team: cols[5] || '',
                         home_team: cols[4] || '',
@@ -90,7 +91,7 @@
                 status.innerHTML = `✅ Loaded ${allProps.length} props`;
                 renderCurrentTab();
             } catch (e) {
-                status.innerHTML = `❌ Error loading CSV`;
+                status.innerHTML = `❌ Failed to load data<br><small>${e.message}</small>`;
             }
         }
 
@@ -100,25 +101,13 @@
 
             const filtered = allProps.filter(p => {
                 const book = p.bookmaker.toLowerCase();
-
-                if (currentTab === 0) { // TRADITIONAL
-                    return !book.includes('prizepicks') && !book.includes('underdog') &&
-                           !book.includes('pinnacle') && !book.includes('betfair') &&
-                           !book.includes('kalshi') && !book.includes('polymarket');
-                }
-                if (currentTab === 1) { // DFS
-                    return book.includes('prizepicks') || book.includes('underdog') || 
-                           book.includes('draftkings pick6') || book.includes('betr picks');
-                }
-                if (currentTab === 2) { // EXCHANGES
-                    return book.includes('pinnacle') || book.includes('betfair') || 
-                           book.includes('kalshi') || book.includes('polymarket') || 
-                           book.includes('prophetx') || book.includes('novig');
-                }
+                if (currentTab === 0) return true; // Traditional
+                if (currentTab === 1) return book.includes('draftkings') || book.includes('fanduel') || book.includes('prizepicks') || book.includes('underdog');
+                if (currentTab === 2) return book.includes('pinnacle') || book.includes('betfair') || book.includes('kalshi') || book.includes('polymarket');
                 return true;
             });
 
-            filtered.slice(0, 500).forEach(p => {
+            filtered.slice(0, 400).forEach(p => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800';
                 row.innerHTML = `
