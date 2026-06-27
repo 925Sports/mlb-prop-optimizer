@@ -3,7 +3,7 @@ name: Update MLB Props + True Point Average Line
 on:
   schedule:
     - cron: '*/15 * * * *'   # Every 15 minutes
-  workflow_dispatch:         # Allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   update-props:
@@ -24,20 +24,17 @@ jobs:
       - name: Install Python dependencies
         run: pip install pandas
 
-      # === NEW: Node.js setup to run the prop updater ===
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Node.js dependencies
-        run: npm install
-
-      - name: Update combo_data.csv (refresh latest props)
-        run: node scripts/update-props.js
-        # If your script needs API keys or env vars, add them here like:
-        # env:
-        #   SOME_API_KEY: ${{ secrets.SOME_API_KEY }}
+      # Try to refresh combo_data.csv (non-fatal if it fails)
+      - name: Attempt to update combo_data.csv via update-props.js
+        run: |
+          echo "=== Attempting to refresh combo_data.csv ==="
+          if [ -f scripts/update-props.js ]; then
+            echo "Found scripts/update-props.js — trying to execute..."
+            node scripts/update-props.js || echo "⚠️ update-props.js failed or is missing dependencies (no package.json). Continuing anyway..."
+          else
+            echo "⚠️ scripts/update-props.js not found. combo_data.csv will NOT be refreshed by this workflow."
+          fi
+          echo "=== Finished combo_data.csv update attempt ==="
 
       - name: Enrich props.csv with True Point Average Line from COMBO DATA
         run: |
@@ -46,17 +43,16 @@ jobs:
           import os
           from datetime import datetime
           print("=== Starting True Point Average Line Enrichment ===")
-          # Paths
           props_path = "data/props.csv"
           combo_path = "data/combo_data.csv"
           output_path = "data/props.csv"
-          # Load props.csv
+
           if not os.path.exists(props_path):
               print("ERROR: props.csv not found!")
               exit(1)
           props = pd.read_csv(props_path)
           print(f"Loaded {len(props)} rows from props.csv")
-          # Load combo_data.csv (only the columns we need to save memory)
+
           if not os.path.exists(combo_path):
               print("WARNING: combo_data.csv not found. Skipping enrichment.")
               props['true_point_average_line'] = None
@@ -67,7 +63,6 @@ jobs:
                   'away_team', 'home_team', 'description', 'market', 'point',
                   'True Point Average Line'
               ])
-              # Create join key
               combo['join_key'] = (
                   combo['away_team'].astype(str) + '|' +
                   combo['home_team'].astype(str) + '|' +
@@ -75,12 +70,11 @@ jobs:
                   combo['market'].astype(str) + '|' +
                   combo['point'].astype(str)
               )
-              # Create lookup (take first non-null value per key)
               lookup = combo.dropna(subset=['True Point Average Line'])
               lookup = lookup.drop_duplicates(subset=['join_key'], keep='first')
               lookup = lookup.set_index('join_key')['True Point Average Line'].to_dict()
               print(f"Created lookup with {len(lookup)} unique props")
-              # Create join key in props
+
               props['join_key'] = (
                   props['away_team'].astype(str) + '|' +
                   props['home_team'].astype(str) + '|' +
@@ -88,18 +82,15 @@ jobs:
                   props['market'].astype(str) + '|' +
                   props['point'].astype(str)
               )
-              # Map the True Point Average Line
               props['true_point_average_line'] = props['join_key'].map(lookup)
-              # Calculate difference
               props['true_vs_point'] = props.apply(
                   lambda row: row['true_point_average_line'] - row['point']
                   if pd.notna(row['true_point_average_line']) and pd.notna(row['point'])
                   else None, axis=1
               )
-              # Clean up
               props = props.drop(columns=['join_key'])
               print(f"Enriched {props['true_point_average_line'].notna().sum()} rows with True Point Average Line")
-          # Save enriched file
+
           props.to_csv(output_path, index=False)
           print(f"✅ Saved enriched props.csv at {datetime.now()}")
           EOF
@@ -109,5 +100,5 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add data/props.csv data/combo_data.csv
-          git commit -m "Auto-update: Refreshed combo_data.csv + Enriched props.csv with True Point Average Line" || echo "No changes to commit"
+          git commit -m "Auto-update: Attempted combo_data.csv refresh + Enriched props.csv" || echo "No changes to commit"
           git push
