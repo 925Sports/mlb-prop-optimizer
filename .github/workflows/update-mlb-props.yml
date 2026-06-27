@@ -19,6 +19,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -26,14 +27,23 @@ jobs:
           python-version: '3.11'
 
       - name: Install Python dependencies
-        run: pip install pandas
+        run: pip install pandas requests
 
-      - name: Try to refresh combo_data.csv (optional)
+      # =====================================================
+      # Download latest combo_data.csv from your Google Sheet
+      # =====================================================
+      - name: Download latest combo_data.csv from Google Sheets
         run: |
-          if [ -f scripts/update-props.js ]; then
-            node scripts/update-props.js || echo "⚠️ Could not run update-props.js (missing dependencies)"
+          echo "Downloading latest combo_data.csv from Google Sheets..."
+          curl -L -o data/combo_data.csv \
+            "https://docs.google.com/spreadsheets/d/e/2PACX-1vR5Ja81R4qOvLCMJ9qUK5z-kj8vedU1v_jAvp9QO08JVE2ZTHdgOPLZWtydycvpnKsbsaTtPS_tY7ez/pub?gid=1009829399&single=true&output=csv"
+          
+          if [ -s data/combo_data.csv ]; then
+            echo "✅ Successfully downloaded combo_data.csv"
+            wc -l data/combo_data.csv
           else
-            echo "No update-props.js found - skipping combo_data.csv refresh"
+            echo "❌ Failed to download combo_data.csv or file is empty"
+            exit 1
           fi
 
       - name: Enrich props.csv with True Point Average Line
@@ -46,28 +56,36 @@ jobs:
           props_path = "data/props.csv"
           combo_path = "data/combo_data.csv"
 
+          print("Loading props.csv...")
           props = pd.read_csv(props_path)
+          print(f"Loaded {len(props)} rows from props.csv")
 
           if os.path.exists(combo_path):
+              print("Loading combo_data.csv...")
               combo = pd.read_csv(combo_path, usecols=[
                   'away_team', 'home_team', 'description', 'market', 'point',
                   'True Point Average Line'
               ])
-              combo['join_key'] = combo['away_team'].astype(str) + '|' + \
-                                  combo['home_team'].astype(str) + '|' + \
-                                  combo['description'].astype(str) + '|' + \
-                                  combo['market'].astype(str) + '|' + \
-                                  combo['point'].astype(str)
+
+              combo['join_key'] = (
+                  combo['away_team'].astype(str) + '|' +
+                  combo['home_team'].astype(str) + '|' +
+                  combo['description'].astype(str) + '|' +
+                  combo['market'].astype(str) + '|' +
+                  combo['point'].astype(str)
+              )
 
               lookup = combo.dropna(subset=['True Point Average Line'])
               lookup = lookup.drop_duplicates(subset=['join_key'], keep='first')
               lookup = lookup.set_index('join_key')['True Point Average Line'].to_dict()
 
-              props['join_key'] = props['away_team'].astype(str) + '|' + \
-                                  props['home_team'].astype(str) + '|' + \
-                                  props['description'].astype(str) + '|' + \
-                                  props['market'].astype(str) + '|' + \
-                                  props['point'].astype(str)
+              props['join_key'] = (
+                  props['away_team'].astype(str) + '|' +
+                  props['home_team'].astype(str) + '|' +
+                  props['description'].astype(str) + '|' +
+                  props['market'].astype(str) + '|' +
+                  props['point'].astype(str)
+              )
 
               props['true_point_average_line'] = props['join_key'].map(lookup)
               props['true_vs_point'] = props.apply(
@@ -76,12 +94,13 @@ jobs:
                   else None, axis=1
               )
               props = props.drop(columns=['join_key'])
-              print(f"Enriched {props['true_point_average_line'].notna().sum()} rows")
+
+              print(f"Enriched {props['true_point_average_line'].notna().sum()} rows with True Point Average Line")
           else:
               print("WARNING: combo_data.csv not found")
 
-          props.to_csv("data/props.csv", index=False)
-          print(f"✅ Saved at {datetime.now()}")
+          props.to_csv(props_path, index=False)
+          print(f"✅ Saved props.csv at {datetime.now()}")
           EOF
 
       - name: Commit and push changes
@@ -90,5 +109,5 @@ jobs:
           git config --local user.name "GitHub Action"
           git add -u
           git add data/props.csv data/combo_data.csv 2>/dev/null || true
-          git commit -m "Auto-update: Enriched props.csv with True Point Average Line" || echo "No changes to commit"
+          git commit -m "Auto-update: Refreshed combo_data.csv from Google Sheets + enriched props.csv" || echo "No changes to commit"
           git push
