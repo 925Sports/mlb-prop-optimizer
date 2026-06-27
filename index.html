@@ -123,32 +123,19 @@
         function getBookmakerType(book) {
             const b = book.toLowerCase();
             if (b.includes('prizepicks') || b.includes('underdog') || b.includes('betr') || 
-                b.includes('pick6') || b.includes('fliff') || b.includes('dabble')) {
-                return 'DFS';
-            }
+                b.includes('pick6') || b.includes('fliff') || b.includes('dabble')) return 'DFS';
             if (b.includes('pinnacle') || b.includes('prophetx') || b.includes('novig') || 
-                b.includes('kalshi') || b.includes('polymarket') || b.includes('betfair')) {
-                return 'Exchange';
-            }
+                b.includes('kalshi') || b.includes('polymarket') || b.includes('betfair')) return 'Exchange';
             return 'Traditional';
         }
 
-        function isTraditional(book) {
-            return getBookmakerType(book) === 'Traditional';
-        }
-
-        function isDFS(book) {
-            return getBookmakerType(book) === 'DFS';
-        }
-
-        function isExchange(book) {
-            return getBookmakerType(book) === 'Exchange';
-        }
+        function isTraditional(book) { return getBookmakerType(book) === 'Traditional'; }
+        function isDFS(book) { return getBookmakerType(book) === 'DFS'; }
+        function isExchange(book) { return getBookmakerType(book) === 'Exchange'; }
 
         async function loadProps() {
             const status = document.getElementById('status');
             status.innerHTML = '🔄 Loading props...';
-
             const success = await tryLoadData();
             if (success) {
                 populateFilters();
@@ -159,7 +146,9 @@
         }
 
         async function tryLoadData() {
-            const csvUrl = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/main/combo_data.csv?' + Date.now();
+            // Updated path to data/combo_data.csv
+            const csvUrl = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/main/data/combo_data.csv?' + Date.now();
+            
             try {
                 const res = await fetch(csvUrl);
                 if (!res.ok) return false;
