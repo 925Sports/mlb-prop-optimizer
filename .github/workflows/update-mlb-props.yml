@@ -2,8 +2,12 @@ name: Update MLB Props + True Point Average Line
 
 on:
   schedule:
-    - cron: '*/15 * * * *'   # Every 15 minutes
+    - cron: '*/15 * * * *'
   workflow_dispatch:
+
+concurrency:
+  group: update-mlb-props
+  cancel-in-progress: true
 
 jobs:
   update-props:
@@ -24,64 +28,47 @@ jobs:
       - name: Install Python dependencies
         run: pip install pandas
 
-      # Try to refresh combo_data.csv (non-fatal)
-      - name: Attempt to update combo_data.csv via update-props.js
+      - name: Try to refresh combo_data.csv (optional)
         run: |
-          echo "=== Attempting to refresh combo_data.csv ==="
           if [ -f scripts/update-props.js ]; then
-            echo "Found scripts/update-props.js — executing..."
-            node scripts/update-props.js || echo "⚠️ update-props.js failed (likely missing dependencies / no package.json). Continuing..."
+            node scripts/update-props.js || echo "⚠️ Could not run update-props.js (missing dependencies)"
           else
-            echo "⚠️ scripts/update-props.js not found — combo_data.csv will not be refreshed."
+            echo "No update-props.js found - skipping combo_data.csv refresh"
           fi
-          echo "=== Finished combo_data.csv update attempt ==="
 
-      - name: Enrich props.csv with True Point Average Line from COMBO DATA
+      - name: Enrich props.csv with True Point Average Line
         run: |
           python3 << 'EOF'
           import pandas as pd
           import os
           from datetime import datetime
-          print("=== Starting True Point Average Line Enrichment ===")
+
           props_path = "data/props.csv"
           combo_path = "data/combo_data.csv"
-          output_path = "data/props.csv"
 
-          if not os.path.exists(props_path):
-              print("ERROR: props.csv not found!")
-              exit(1)
           props = pd.read_csv(props_path)
-          print(f"Loaded {len(props)} rows from props.csv")
 
-          if not os.path.exists(combo_path):
-              print("WARNING: combo_data.csv not found. Skipping enrichment.")
-              props['true_point_average_line'] = None
-              props['true_vs_point'] = None
-          else:
-              print("Loading combo_data.csv...")
+          if os.path.exists(combo_path):
               combo = pd.read_csv(combo_path, usecols=[
                   'away_team', 'home_team', 'description', 'market', 'point',
                   'True Point Average Line'
               ])
-              combo['join_key'] = (
-                  combo['away_team'].astype(str) + '|' +
-                  combo['home_team'].astype(str) + '|' +
-                  combo['description'].astype(str) + '|' +
-                  combo['market'].astype(str) + '|' +
-                  combo['point'].astype(str)
-              )
+              combo['join_key'] = combo['away_team'].astype(str) + '|' + \
+                                  combo['home_team'].astype(str) + '|' + \
+                                  combo['description'].astype(str) + '|' + \
+                                  combo['market'].astype(str) + '|' + \
+                                  combo['point'].astype(str)
+
               lookup = combo.dropna(subset=['True Point Average Line'])
               lookup = lookup.drop_duplicates(subset=['join_key'], keep='first')
               lookup = lookup.set_index('join_key')['True Point Average Line'].to_dict()
-              print(f"Created lookup with {len(lookup)} unique props")
 
-              props['join_key'] = (
-                  props['away_team'].astype(str) + '|' +
-                  props['home_team'].astype(str) + '|' +
-                  props['description'].astype(str) + '|' +
-                  props['market'].astype(str) + '|' +
-                  props['point'].astype(str)
-              )
+              props['join_key'] = props['away_team'].astype(str) + '|' + \
+                                  props['home_team'].astype(str) + '|' + \
+                                  props['description'].astype(str) + '|' + \
+                                  props['market'].astype(str) + '|' + \
+                                  props['point'].astype(str)
+
               props['true_point_average_line'] = props['join_key'].map(lookup)
               props['true_vs_point'] = props.apply(
                   lambda row: row['true_point_average_line'] - row['point']
@@ -89,27 +76,19 @@ jobs:
                   else None, axis=1
               )
               props = props.drop(columns=['join_key'])
-              print(f"Enriched {props['true_point_average_line'].notna().sum()} rows with True Point Average Line")
+              print(f"Enriched {props['true_point_average_line'].notna().sum()} rows")
+          else:
+              print("WARNING: combo_data.csv not found")
 
-          props.to_csv(output_path, index=False)
-          print(f"✅ Saved enriched props.csv at {datetime.now()}")
+          props.to_csv("data/props.csv", index=False)
+          print(f"✅ Saved at {datetime.now()}")
           EOF
-
-      - name: Debug - List files in data/ folder
-        run: |
-          echo "=== Contents of data/ folder after enrichment ==="
-          ls -la data/ || echo "data/ folder not found or empty"
-          echo "=== End of data/ listing ==="
 
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-
-          # Defensive add - only stage files that actually exist and have changes
-          git add -u                    # stage all tracked modified files
-          git add data/props.csv 2>/dev/null || true
-          git add data/combo_data.csv 2>/dev/null || echo "combo_data.csv not present or unchanged"
-
-          git commit -m "Auto-update: Enriched props.csv with True Point Average Line (combo_data.csv refresh attempted)" || echo "No changes to commit"
+          git add -u
+          git add data/props.csv data/combo_data.csv 2>/dev/null || true
+          git commit -m "Auto-update: Enriched props.csv with True Point Average Line" || echo "No changes to commit"
           git push
