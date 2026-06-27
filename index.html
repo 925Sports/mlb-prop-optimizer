@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLB Prop Optimizer • 925Sports</title>
+    <title>MLB Prop Optimizer • NineToFiveSports</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -13,6 +13,19 @@
         .tab-active { border-bottom: 3px solid #00d4ff; color: #00d4ff; }
         th { cursor: pointer; }
         th:hover { background-color: #1e2937; }
+        .bookmaker-logo {
+            width: 22px;
+            height: 22px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+        .player-image {
+            width: 72px;
+            height: 72px;
+            object-fit: cover;
+            border-radius: 9999px;
+            border: 2px solid #334155;
+        }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-200">
@@ -22,17 +35,30 @@
                 <div class="text-5xl">⚾</div>
                 <h1 class="header-font text-5xl font-semibold tracking-tighter">MLB PROP OPTIMIZER</h1>
             </div>
-            <div class="text-emerald-400 font-medium">925Sports • Live from GitHub CSV</div>
+            <div class="text-emerald-400 font-medium">NineToFiveSports</div>
         </div>
 
-        <button onclick="loadProps()" class="mb-8 px-8 py-4 bg-emerald-400 text-slate-950 rounded-3xl font-semibold flex items-center gap-x-3">
-            <i class="fa-solid fa-rotate"></i> REFRESH PROPS
-        </button>
+        <div class="flex flex-col md:flex-row gap-4 mb-6">
+            <div class="flex-1">
+                <div class="relative">
+                    <input type="text" id="searchInput" placeholder="Search player, team, market, or game..." 
+                           oninput="renderCurrentTab()"
+                           class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-5 py-3 text-sm pl-12 focus:outline-none focus:border-emerald-400">
+                    <i class="fa-solid fa-search absolute left-5 top-4 text-slate-400"></i>
+                </div>
+            </div>
+            
+            <button onclick="loadProps()" 
+                    class="px-8 py-3 bg-emerald-400 text-slate-950 rounded-3xl font-semibold flex items-center gap-x-3 hover:bg-emerald-300 transition-colors whitespace-nowrap">
+                <i class="fa-solid fa-rotate"></i> 
+                <span>REFRESH</span>
+            </button>
+        </div>
 
         <div id="status" class="mb-6 p-4 bg-slate-900 rounded-3xl text-sm font-medium"></div>
 
         <!-- Filters -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <div>
                 <label class="text-xs text-slate-400 block mb-1">MARKET</label>
                 <select id="marketFilter" onchange="renderCurrentTab()" class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-5 py-3 text-sm">
@@ -51,11 +77,24 @@
                     <option value="">All Books</option>
                 </select>
             </div>
+            <div>
+                <label class="text-xs text-slate-400 block mb-1">MATCH PROGRESS</label>
+                <select id="matchProgressFilter" onchange="renderCurrentTab()" class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-5 py-3 text-sm">
+                    <option value="">All Progress</option>
+                </select>
+            </div>
+            <div id="primaryBookDiv" style="display: none;">
+                <label class="text-xs text-slate-400 block mb-1">PRIMARY BOOK</label>
+                <select id="primaryBookFilter" onchange="renderCurrentTab()" class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-5 py-3 text-sm">
+                    <option value="">All Books</option>
+                </select>
+            </div>
         </div>
 
+        <!-- Tabs -->
         <div class="flex border-b border-slate-700 mb-6">
-            <button onclick="switchTab(0)" id="tab-0" class="tab tab-active px-8 py-4 font-semibold text-xl flex-1">TRADITIONAL</button>
-            <button onclick="switchTab(1)" id="tab-1" class="tab px-8 py-4 font-semibold text-xl flex-1">DFS</button>
+            <button onclick="switchTab(0)" id="tab-0" class="tab px-8 py-4 font-semibold text-xl flex-1">TRADITIONAL</button>
+            <button onclick="switchTab(1)" id="tab-1" class="tab tab-active px-8 py-4 font-semibold text-xl flex-1">DFS</button>
             <button onclick="switchTab(2)" id="tab-2" class="tab px-8 py-4 font-semibold text-xl flex-1">EXCHANGES</button>
             <button onclick="switchTab(3)" id="tab-3" class="tab px-8 py-4 font-semibold text-xl flex-1">ADVANCED</button>
         </div>
@@ -63,17 +102,13 @@
         <table class="w-full bg-slate-900 rounded-3xl overflow-hidden">
             <thead class="bg-slate-800 text-xs text-slate-400">
                 <tr>
-                    <th class="text-left py-5 px-6">GAME</th>
-                    <th class="text-left py-5 px-6">PLAYER</th>
-                    <th class="text-left py-5 px-6">PROP</th>
-                    <th class="text-left py-5 px-6">LINE</th>
-                    <th class="text-left py-5 px-6">SIDE</th>
+                    <th class="text-left py-5 px-6 w-96">PROP DETAILS</th>
                     <th class="text-left py-5 px-6">BOOKMAKER</th>
-                    <th onclick="sortTable(6)" class="text-right py-5 px-6">BEST ODDS</th>
-                    <th onclick="sortTable(7)" class="text-right py-5 px-6">AVG ODDS</th>
-                    <th onclick="sortTable(8)" class="text-right py-5 px-6">AVG IMPLIED %</th>
-                    <th onclick="sortTable(9)" class="text-right py-5 px-6">EDGE vs AVG</th>
-                    <th onclick="sortTable(10)" class="text-right py-5 px-6">+EV</th>
+                    <th onclick="sortTable(2)" class="text-right py-5 px-6">OVER / UNDER</th>
+                    <th onclick="sortTable(3)" class="text-right py-5 px-6">Proj.</th>
+                    <th onclick="sortTable(4)" class="text-right py-5 px-6">PROJ vs LINE</th>
+                    <th onclick="sortTable(5)" class="text-right py-5 px-6">EDGE %</th>
+                    <th class="text-right py-5 px-6">COMPARE</th>
                 </tr>
             </thead>
             <tbody id="table-body" class="divide-y divide-slate-700 text-sm"></tbody>
@@ -82,50 +117,133 @@
 
     <script>
         let allProps = [];
-        let currentTab = 0;
+        let currentTab = 1;
         let sortDirection = 1;
 
-        function americanToImplied(odds) {
-            return odds > 0 ? (100 / (odds + 100)) * 100 : (Math.abs(odds) / (Math.abs(odds) + 100)) * 100;
+        function getBookmakerType(book) {
+            const b = book.toLowerCase();
+            if (b.includes('prizepicks') || b.includes('underdog') || b.includes('betr') || 
+                b.includes('pick6') || b.includes('fliff') || b.includes('dabble')) {
+                return 'DFS';
+            }
+            if (b.includes('pinnacle') || b.includes('prophetx') || b.includes('novig') || 
+                b.includes('kalshi') || b.includes('polymarket') || b.includes('betfair')) {
+                return 'Exchange';
+            }
+            return 'Traditional';
+        }
+
+        function isTraditional(book) {
+            return getBookmakerType(book) === 'Traditional';
+        }
+
+        function isDFS(book) {
+            return getBookmakerType(book) === 'DFS';
+        }
+
+        function isExchange(book) {
+            return getBookmakerType(book) === 'Exchange';
         }
 
         async function loadProps() {
             const status = document.getElementById('status');
-            status.innerHTML = '🔄 Loading CSV from GitHub...';
+            status.innerHTML = '🔄 Loading props...';
 
-            const csvUrl = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/refs/heads/main/data/props.csv?' + Date.now();
-
-            try {
-                const res = await fetch(csvUrl);
-                if (!res.ok) throw new Error('CSV not found');
-
-                const text = await res.text();
-                const rows = text.trim().split('\n');
-
-                allProps = rows.slice(1).map(row => {
-                    const cols = row.split('","').map(c => c.replace(/^"|"$/g, '').trim());
-                    return {
-                        away_team: cols[5] || '',
-                        home_team: cols[4] || '',
-                        description: cols[8] || '',
-                        market: cols[6] || '',
-                        label: cols[7] || '',
-                        price: parseFloat(cols[9]),
-                        point: cols[10] ? parseFloat(cols[10]) : null,
-                        bookmaker: cols[2] || ''
-                    };
-                }).filter(p => p.description && !isNaN(p.price));
-
+            const success = await tryLoadData();
+            if (success) {
                 populateFilters();
-                status.innerHTML = `✅ Loaded ${allProps.length} props`;
                 renderCurrentTab();
-            } catch (e) {
-                status.innerHTML = `❌ Error loading CSV`;
+            } else {
+                status.innerHTML = '❌ Failed to load data.';
             }
         }
 
+        async function tryLoadData() {
+            const csvUrl = 'https://raw.githubusercontent.com/925Sports/mlb-prop-optimizer/main/combo_data.csv?' + Date.now();
+            try {
+                const res = await fetch(csvUrl);
+                if (!res.ok) return false;
+
+                const text = await res.text();
+                const lines = text.trim().split('\n');
+                const header = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+
+                const idx = {
+                    away_team: header.indexOf('away_team'),
+                    home_team: header.indexOf('home_team'),
+                    market: header.indexOf('market'),
+                    description: header.indexOf('description'),
+                    point: header.indexOf('point'),
+                    bookmaker: header.indexOf('bookmaker'),
+                    bookmakerLogo: header.indexOf('Bookmaker Logo'),
+                    playerImage: header.indexOf('Player Image'),
+                    matchProgress: header.indexOf('Match Progress'),
+                    venueType: header.indexOf('Venue Type'),
+                    truePointAverageLine: header.indexOf('True Point Average Line'),
+                    overPrice: header.indexOf('Over Price'),
+                    underPrice: header.indexOf('Under Price'),
+                    maxNoVigDiff: header.indexOf('Max No-Vig Diff'),
+                    avgNoVigOver: header.indexOf('Average No-Vig Over %'),
+                    avgNoVigUnder: header.indexOf('Average No-Vig Under %'),
+                    truePrice: header.indexOf('True Price'),
+                    adjustedEdge: header.indexOf('Adjusted % Edge'),
+                    overPercent: header.indexOf('Over %'),
+                    underPercent: header.indexOf('Under %'),
+                    noVigOver: header.indexOf('No-Vig Over %'),
+                    noVigUnder: header.indexOf('No-Vig Under %'),
+                    betTag: header.indexOf('Bet Tag')
+                };
+
+                allProps = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+                    const point = parseFloat(cols[idx.point]);
+                    const trueLine = parseFloat(cols[idx.truePointAverageLine]);
+                    const maxDiff = parseFloat(cols[idx.maxNoVigDiff]);
+                    const overP = parseFloat(cols[idx.overPrice]);
+                    const underP = parseFloat(cols[idx.underPrice]);
+                    const desc = cols[idx.description] || '';
+                    const tag = cols[idx.betTag] || '';
+
+                    const isUnder = desc.toLowerCase().includes('under') || tag.toLowerCase().includes('under');
+
+                    allProps.push({
+                        away_team: cols[idx.away_team] || '',
+                        home_team: cols[idx.home_team] || '',
+                        description: desc,
+                        market: cols[idx.market] || '',
+                        point: isNaN(point) ? null : point,
+                        bookmaker: cols[idx.bookmaker] || '',
+                        bookmaker_logo: cols[idx.bookmakerLogo] || '',
+                        player_image: cols[idx.playerImage] || '',
+                        match_progress: cols[idx.matchProgress] || '',
+                        venue_type: cols[idx.venueType] || '',
+                        true_point_average_line: isNaN(trueLine) ? null : trueLine,
+                        true_vs_point: (isNaN(trueLine) || isNaN(point)) ? null : (trueLine - point),
+                        over_price: isNaN(overP) ? null : overP,
+                        under_price: isNaN(underP) ? null : underP,
+                        edge_percent: isNaN(maxDiff) ? null : maxDiff,
+                        avg_no_vig_over: cols[idx.avgNoVigOver] || '',
+                        avg_no_vig_under: cols[idx.avgNoVigUnder] || '',
+                        true_price: cols[idx.truePrice] || '',
+                        adjusted_edge: cols[idx.adjustedEdge] || '',
+                        over_percent: cols[idx.overPercent] || '',
+                        under_percent: cols[idx.underPercent] || '',
+                        no_vig_over: cols[idx.noVigOver] || '',
+                        no_vig_under: cols[idx.noVigUnder] || '',
+                        bet_tag: tag,
+                        label: isUnder ? 'Under' : 'Over'
+                    });
+                }
+
+                allProps = allProps.filter(p => p.description);
+                document.getElementById('status').innerHTML = `✅ Loaded ${allProps.length} props`;
+                return true;
+            } catch (e) { return false; }
+        }
+
         function populateFilters() {
-            // Market filter
             const marketSet = new Set(allProps.map(p => p.market));
             const marketSelect = document.getElementById('marketFilter');
             marketSelect.innerHTML = '<option value="">All Markets</option>';
@@ -136,7 +254,6 @@
                 marketSelect.appendChild(opt);
             });
 
-            // Game filter
             const gameSet = new Set(allProps.map(p => `${p.away_team} @ ${p.home_team}`));
             const gameSelect = document.getElementById('gameFilter');
             gameSelect.innerHTML = '<option value="">All Games</option>';
@@ -147,8 +264,17 @@
                 gameSelect.appendChild(opt);
             });
 
-            // Bookmaker filter
-            const bookSet = new Set(allProps.map(p => p.bookmaker));
+            let bookSet;
+            if (currentTab === 0) {
+                bookSet = new Set(allProps.filter(p => isTraditional(p.bookmaker)).map(p => p.bookmaker));
+            } else if (currentTab === 1) {
+                bookSet = new Set(allProps.filter(p => isDFS(p.bookmaker)).map(p => p.bookmaker));
+            } else if (currentTab === 2) {
+                bookSet = new Set(allProps.filter(p => isExchange(p.bookmaker)).map(p => p.bookmaker));
+            } else {
+                bookSet = new Set(allProps.map(p => p.bookmaker));
+            }
+
             const bookSelect = document.getElementById('bookFilter');
             bookSelect.innerHTML = '<option value="">All Books</option>';
             Array.from(bookSet).sort().forEach(b => {
@@ -157,92 +283,129 @@
                 opt.textContent = b;
                 bookSelect.appendChild(opt);
             });
-        }
 
-        function calculateAverages() {
-            const map = {};
-            allProps.forEach(p => {
-                const key = `${p.away_team}@${p.home_team}|${p.description}|${p.market}|${p.point}|${p.label}`;
-                if (!map[key]) map[key] = [];
-                map[key].push(p.price);
+            const progressSet = new Set(allProps.map(p => p.match_progress).filter(Boolean));
+            const progressSelect = document.getElementById('matchProgressFilter');
+            progressSelect.innerHTML = '<option value="">All Progress</option>';
+            Array.from(progressSet).sort().forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p;
+                progressSelect.appendChild(opt);
             });
-            return map;
+
+            const primarySelect = document.getElementById('primaryBookFilter');
+            primarySelect.innerHTML = '<option value="">All Books</option>';
+            Array.from(new Set(allProps.map(p => p.bookmaker))).sort().forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b;
+                opt.textContent = b;
+                primarySelect.appendChild(opt);
+            });
         }
 
         function renderCurrentTab() {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
             const marketFilter = document.getElementById('marketFilter').value;
             const gameFilter = document.getElementById('gameFilter').value;
             const bookFilter = document.getElementById('bookFilter').value;
+            const progressFilter = document.getElementById('matchProgressFilter').value;
 
-            const averages = calculateAverages();
+            let filtered = allProps;
 
-            let filtered = allProps.filter(p => {
-                const book = p.bookmaker.toLowerCase();
-                const gameStr = `${p.away_team} @ ${p.home_team}`;
+            if (currentTab === 0) filtered = filtered.filter(p => isTraditional(p.bookmaker));
+            if (currentTab === 1) filtered = filtered.filter(p => isDFS(p.bookmaker));
+            if (currentTab === 2) filtered = filtered.filter(p => isExchange(p.bookmaker));
 
-                // Tab filtering
-                if (currentTab === 0) { // TRADITIONAL
-                    return !book.includes('prizepicks') && !book.includes('underdog') && 
-                           !book.includes('betr_us_dfs') && !book.includes('pick6') &&
-                           !book.includes('fliff') && !book.includes('dabble_us_dfs') &&
-                           !book.includes('pinnacle') && !book.includes('betfair') && 
-                           !book.includes('kalshi') && !book.includes('polymarket');
-                }
-                if (currentTab === 1) { // DFS
-                    return book.includes('draftkings') || book.includes('fanduel') || 
-                           book.includes('prizepicks') || book.includes('underdog') || 
-                           book.includes('betr_us_dfs') || book.includes('pick6') ||
-                           book.includes('fliff') || book.includes('dabble_us_dfs');
-                }
-                if (currentTab === 2) { // EXCHANGES
-                    return book.includes('pinnacle') || book.includes('betfair') || 
-                           book.includes('kalshi') || book.includes('polymarket') || 
-                           book.includes('prophetx') || book.includes('novig') || 
-                           book.includes('betopenly');
-                }
-                if (currentTab === 3) return true; // ADVANCED
-
-                return true;
-            });
-
-            // Apply dropdown filters
             if (marketFilter) filtered = filtered.filter(p => p.market === marketFilter);
             if (gameFilter) filtered = filtered.filter(p => `${p.away_team} @ ${p.home_team}` === gameFilter);
             if (bookFilter) filtered = filtered.filter(p => p.bookmaker === bookFilter);
+            if (progressFilter) filtered = filtered.filter(p => p.match_progress === progressFilter);
 
-            filtered = filtered.map(p => {
-                const key = `${p.away_team}@${p.home_team}|${p.description}|${p.market}|${p.point}|${p.label}`;
-                const avgOdds = averages[key] ? averages[key].reduce((a, b) => a + b, 0) / averages[key].length : p.price;
-                const implied = americanToImplied(p.price);
-                const avgImplied = americanToImplied(avgOdds);
-                const edge = (implied - avgImplied);
-                return { ...p, edge, avgOdds, avgImplied };
+            if (searchTerm) {
+                filtered = filtered.filter(p => 
+                    p.description.toLowerCase().includes(searchTerm) ||
+                    p.away_team.toLowerCase().includes(searchTerm) ||
+                    p.home_team.toLowerCase().includes(searchTerm) ||
+                    p.market.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            filtered.sort((a, b) => {
+                const edgeA = a.edge_percent || -999;
+                const edgeB = b.edge_percent || -999;
+                return edgeB - edgeA;
             });
 
-            filtered.sort((a, b) => b.edge - a.edge);
-
             filtered.slice(0, 800).forEach(p => {
-                const implied = americanToImplied(p.price);
-                const edgeDisplay = p.edge.toFixed(1);
-                const isPositive = p.edge > 0;
-
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800';
+
+                const trueLine = p.true_point_average_line != null ? p.true_point_average_line.toFixed(2) : '-';
+                const diff = p.true_vs_point;
+                const diffDisplay = diff != null ? (diff > 0 ? '+' : '') + diff.toFixed(2) : '-';
+                
+                const edgeValue = p.edge_percent;
+                const edgeDisplay = edgeValue != null ? edgeValue.toFixed(2) + '%' : '-';
+                const edgeColor = edgeValue > 0 ? 'text-emerald-400' : edgeValue < 0 ? 'text-rose-400' : '';
+
+                const overUnder = (p.over_price != null && p.under_price != null) ? `${p.over_price} / ${p.under_price}` : '-';
+
+                const isUnder = p.label === 'Under';
+                const tagColorClass = isUnder 
+                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' 
+                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+
+                let bookmakerHTML = '';
+                if (p.bookmaker_logo) {
+                    bookmakerHTML = `
+                        <div class="flex items-center gap-x-2">
+                            <img src="${p.bookmaker_logo}" class="bookmaker-logo" alt="${p.bookmaker}" 
+                                 onerror="this.style.display='none'">
+                            <span class="text-xs uppercase">${p.bookmaker}</span>
+                        </div>
+                    `;
+                } else {
+                    bookmakerHTML = `<span class="text-xs uppercase">${p.bookmaker}</span>`;
+                }
+
+                let extraInfo = '';
+                if (p.match_progress) {
+                    extraInfo += `<span class="px-2 py-0.5 text-[10px] bg-slate-700 rounded mr-1">${p.match_progress}</span>`;
+                }
+                if (p.venue_type) {
+                    extraInfo += `<span class="px-2 py-0.5 text-[10px] bg-slate-600 rounded">${p.venue_type}</span>`;
+                }
+
                 row.innerHTML = `
-                    <td class="px-6 py-5">${p.away_team} @ ${p.home_team}</td>
-                    <td class="px-6 py-5 font-semibold">${p.description}</td>
-                    <td class="px-6 py-5">${p.market.replace(/_/g,' ').toUpperCase()}</td>
-                    <td class="px-6 py-5 font-mono">${p.point || '—'}</td>
-                    <td class="px-6 py-5"><span class="px-4 py-1 text-xs font-bold rounded-3xl ${p.label==='Over'?'bg-emerald-400 text-emerald-950':'bg-rose-400 text-rose-950'}">${p.label}</span></td>
-                    <td class="px-6 py-5 text-xs uppercase">${p.bookmaker}</td>
-                    <td class="px-6 py-5 text-right font-mono text-2xl">${p.price}</td>
-                    <td class="px-6 py-5 text-right font-mono">${p.avgOdds.toFixed(1)}</td>
-                    <td class="px-6 py-5 text-right font-mono">${p.avgImplied.toFixed(1)}%</td>
-                    <td class="px-6 py-5 text-right font-medium ${isPositive ? 'text-emerald-400' : 'text-rose-400'}">${isPositive ? '+' : ''}${edgeDisplay}%</td>
-                    <td class="px-6 py-5 text-right font-medium ${isPositive ? 'text-emerald-400' : 'text-rose-400'}">${isPositive ? '+' : ''}${edgeDisplay}%</td>
+                    <td class="px-6 py-5">
+                        <div class="font-semibold text-base">${p.description}</div>
+                        <div class="text-sm mt-0.5">
+                            ${p.market.replace(/_/g, ' ').toUpperCase()} 
+                            <span class="font-bold">${p.point || ''}</span>
+                        </div>
+                        <div class="text-xs text-slate-500 mt-1">${p.away_team} @ ${p.home_team}</div>
+                        ${extraInfo ? `<div class="mt-1.5">${extraInfo}</div>` : ''}
+                        <div class="mt-1">
+                            <span class="px-2.5 py-0.5 text-xs font-medium rounded-2xl ${tagColorClass}">
+                                ${p.bet_tag || ''}
+                            </span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-5">${bookmakerHTML}</td>
+                    <td class="px-6 py-5 text-right font-mono text-sm">${overUnder}</td>
+                    <td class="px-6 py-5 text-right font-mono">${trueLine}</td>
+                    <td class="px-6 py-5 text-right font-mono ${diff > 0 ? 'text-emerald-400' : diff < 0 ? 'text-rose-400' : ''}">${diffDisplay}</td>
+                    <td class="px-6 py-5 text-right font-mono ${edgeColor}">${edgeDisplay}</td>
+                    <td class="px-6 py-5 text-right">
+                        <button onclick="showComparisonModalFromList(this, '${p.away_team}|${p.home_team}|${p.description}|${p.market}|${p.point}')" 
+                                class="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-2xl border border-slate-600">
+                            View
+                        </button>
+                    </td>
                 `;
                 tbody.appendChild(row);
             });
@@ -250,12 +413,126 @@
 
         function switchTab(n) {
             currentTab = n;
-            document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('tab-active', i===n));
+            document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('tab-active', i === n));
+            const primaryDiv = document.getElementById('primaryBookDiv');
+            if (primaryDiv) primaryDiv.style.display = (n === 3) ? 'block' : 'none';
+            
+            populateFilters();
             renderCurrentTab();
         }
 
-        function filterTable() {
-            renderCurrentTab();
+        function showComparisonModalFromList(element, keyString) {
+            const parts = keyString.split('|');
+            const filtered = allProps.filter(p =>
+                p.away_team === parts[0] && p.home_team === parts[1] &&
+                p.description === parts[2] && p.market === parts[3] && p.point == parts[4]
+            );
+            if (filtered.length > 0) {
+                window.propGroups = { [keyString]: filtered };
+                showComparisonModal(keyString);
+            }
+        }
+
+        function showComparisonModal(key) {
+            const group = window.propGroups[key];
+            if (!group) return;
+
+            group.sort((a, b) => {
+                const edgeA = a.edge_percent || -999;
+                const edgeB = b.edge_percent || -999;
+                return edgeB - edgeA;
+            });
+
+            const first = group[0];
+
+            const proj = first.true_point_average_line != null ? first.true_point_average_line.toFixed(2) : '-';
+            const projVsLine = first.true_vs_point != null ? (first.true_vs_point > 0 ? '+' : '') + first.true_vs_point.toFixed(2) : '-';
+            const truePrice = first.true_price || '-';
+            const likelihood = first.adjusted_edge || '-';
+
+            let playerImageHTML = '';
+            if (first.player_image) {
+                playerImageHTML = `<img src="${first.player_image}" class="player-image" alt="${first.description}" onerror="this.style.display='none'">`;
+            } else {
+                playerImageHTML = `<div class="w-[72px] h-[72px] bg-slate-700 rounded-full flex items-center justify-center text-2xl font-bold text-slate-400">?</div>`;
+            }
+
+            let html = `<div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[100]" onclick="this.remove()">
+                <div class="bg-slate-900 rounded-3xl max-w-7xl w-full mx-4 overflow-hidden" onclick="event.stopImmediatePropagation()">
+                    <div class="p-6 border-b border-slate-700">
+                        <div class="flex justify-between items-start gap-6">
+                            <div class="flex-shrink-0">
+                                ${playerImageHTML}
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="text-2xl font-semibold">${first.description}</div>
+                                <div class="text-sm text-slate-400 mt-1">${first.away_team} @ ${first.home_team} • Line ${first.point}</div>
+                                
+                                <div class="flex flex-wrap gap-x-6 gap-y-1 mt-4 text-sm">
+                                    <div><span class="text-slate-400">Proj:</span> <span class="font-semibold">${proj}</span></div>
+                                    <div><span class="text-slate-400">PROJ vs LINE:</span> <span class="font-semibold">${projVsLine}</span></div>
+                                    <div><span class="text-slate-400">True Price:</span> <span class="font-semibold">${truePrice}</span></div>
+                                    <div><span class="text-slate-400">% Likelihood:</span> <span class="font-semibold">${likelihood}</span></div>
+                                </div>
+                            </div>
+
+                            <button onclick="this.closest('.fixed').remove()" class="text-3xl flex-shrink-0">&times;</button>
+                        </div>
+                    </div>
+
+                    <div class="p-6 max-h-[70vh] overflow-auto">
+                        <table class="w-full">
+                            <thead><tr class="text-xs text-slate-400">
+                                <th class="text-left py-3">BOOKMAKER</th>
+                                <th class="text-left py-3">TYPE</th>
+                                <th class="text-right py-3">OVER / UNDER</th>
+                                <th class="text-right py-3">Over %</th>
+                                <th class="text-right py-3">Under %</th>
+                                <th class="text-right py-3">No-Vig Over %</th>
+                                <th class="text-right py-3">No-Vig Under %</th>
+                                <th class="text-right py-3">EDGE %</th>
+                            </tr></thead>
+                            <tbody>`;
+
+            group.forEach(p => {
+                const edgeValue = p.edge_percent;
+                const edgeDisplay = edgeValue != null ? edgeValue.toFixed(2) + '%' : '-';
+                const edgeColor = edgeValue > 0 ? 'text-emerald-400' : edgeValue < 0 ? 'text-rose-400' : '';
+                const overUnder = (p.over_price != null && p.under_price != null) ? `${p.over_price} / ${p.under_price}` : '-';
+                const type = getBookmakerType(p.bookmaker);
+
+                let logoHTML = '';
+                if (p.bookmaker_logo) {
+                    logoHTML = `<img src="${p.bookmaker_logo}" class="bookmaker-logo inline-block mr-2" alt="${p.bookmaker}" onerror="this.style.display='none'">`;
+                }
+
+                html += `<tr class="hover:bg-slate-800">
+                    <td class="py-3 px-4">
+                        <div class="flex items-center gap-x-2">
+                            ${logoHTML}
+                            <span class="text-xs uppercase">${p.bookmaker}</span>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="px-2.5 py-0.5 text-xs font-medium rounded-2xl 
+                            ${type === 'Traditional' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 
+                              type === 'DFS' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 
+                              'bg-orange-500/20 text-orange-400 border border-orange-500/30'}">
+                            ${type}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-right font-mono text-sm">${overUnder}</td>
+                    <td class="py-3 px-4 text-right font-mono">${p.over_percent || '-'}</td>
+                    <td class="py-3 px-4 text-right font-mono">${p.under_percent || '-'}</td>
+                    <td class="py-3 px-4 text-right font-mono">${p.no_vig_over || '-'}</td>
+                    <td class="py-3 px-4 text-right font-mono">${p.no_vig_under || '-'}</td>
+                    <td class="py-3 px-4 text-right font-mono ${edgeColor}">${edgeDisplay}</td>
+                </tr>`;
+            });
+
+            html += `</tbody></table></div></div></div>`;
+            document.body.insertAdjacentHTML('beforeend', html);
         }
 
         function sortTable(colIndex) {
@@ -264,13 +541,21 @@
             rows.sort((a, b) => {
                 let valA = a.cells[colIndex].textContent.replace(/[^0-9.-]/g, '');
                 let valB = b.cells[colIndex].textContent.replace(/[^0-9.-]/g, '');
-                return (parseFloat(valB) - parseFloat(valA)) * sortDirection;
+                const numA = parseFloat(valA);
+                const numB = parseFloat(valB);
+                if (isNaN(numA) && isNaN(numB)) return 0;
+                if (isNaN(numA)) return 1;
+                if (isNaN(numB)) return -1;
+                return (numB - numA) * sortDirection;
             });
             sortDirection *= -1;
             rows.forEach(row => tbody.appendChild(row));
         }
 
-        window.onload = loadProps;
+        window.onload = () => {
+            document.getElementById('tab-1').classList.add('tab-active');
+            loadProps();
+        };
     </script>
 </body>
 </html>
