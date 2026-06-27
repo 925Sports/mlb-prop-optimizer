@@ -24,15 +24,15 @@ jobs:
       - name: Install Python dependencies
         run: pip install pandas
 
-      # Try to refresh combo_data.csv (non-fatal if it fails)
+      # Try to refresh combo_data.csv (non-fatal)
       - name: Attempt to update combo_data.csv via update-props.js
         run: |
           echo "=== Attempting to refresh combo_data.csv ==="
           if [ -f scripts/update-props.js ]; then
-            echo "Found scripts/update-props.js — trying to execute..."
-            node scripts/update-props.js || echo "⚠️ update-props.js failed or is missing dependencies (no package.json). Continuing anyway..."
+            echo "Found scripts/update-props.js — executing..."
+            node scripts/update-props.js || echo "⚠️ update-props.js failed (likely missing dependencies / no package.json). Continuing..."
           else
-            echo "⚠️ scripts/update-props.js not found. combo_data.csv will NOT be refreshed by this workflow."
+            echo "⚠️ scripts/update-props.js not found — combo_data.csv will not be refreshed."
           fi
           echo "=== Finished combo_data.csv update attempt ==="
 
@@ -95,10 +95,21 @@ jobs:
           print(f"✅ Saved enriched props.csv at {datetime.now()}")
           EOF
 
+      - name: Debug - List files in data/ folder
+        run: |
+          echo "=== Contents of data/ folder after enrichment ==="
+          ls -la data/ || echo "data/ folder not found or empty"
+          echo "=== End of data/ listing ==="
+
       - name: Commit and push changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add data/props.csv data/combo_data.csv
-          git commit -m "Auto-update: Attempted combo_data.csv refresh + Enriched props.csv" || echo "No changes to commit"
+
+          # Defensive add - only stage files that actually exist and have changes
+          git add -u                    # stage all tracked modified files
+          git add data/props.csv 2>/dev/null || true
+          git add data/combo_data.csv 2>/dev/null || echo "combo_data.csv not present or unchanged"
+
+          git commit -m "Auto-update: Enriched props.csv with True Point Average Line (combo_data.csv refresh attempted)" || echo "No changes to commit"
           git push
