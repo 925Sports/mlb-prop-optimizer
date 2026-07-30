@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MLB PROP OPTIMIZER • NineToFiveSports</title>
-    <!-- 
-      Tailwind Play CDN used for this self-contained single-file tool.
-      For a true production build, run the Tailwind CLI and inline the CSS.
-    -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -17,54 +13,22 @@
         body { font-family: 'Inter', sans-serif; }
         .header-font { font-family: 'Space Grotesk', sans-serif; }
         .tab-active { border-bottom: 3px solid #00d4ff; color: #00d4ff; }
-        th { cursor: pointer; }
+        th { cursor: pointer; user-select: none; }
         th:hover { background-color: #1e2937; }
-        .bookmaker-logo {
-            width: 22px;
-            height: 22px;
-            object-fit: contain;
-            border-radius: 4px;
-        }
-        .player-image {
-            width: 72px;
-            height: 72px;
-            object-fit: cover;
-            border-radius: 9999px;
-            border: 2px solid #334155;
-        }
-        .detail-tab {
-            padding: 8px 20px;
-            font-weight: 600;
-            font-size: 14px;
-            border-bottom: 3px solid transparent;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .detail-tab.active {
-            border-bottom-color: #00d4ff;
-            color: #00d4ff;
-        }
-        .game-log-table th, .game-log-table td {
-            padding: 8px 10px;
-            font-size: 12px;
-            text-align: center;
-        }
-        .game-log-table th {
-            background: #1e2937;
-            color: #94a3b8;
-            position: sticky;
-            top: 0;
-        }
-        .splits-chart-container {
-            max-height: 260px;
-        }
-        .real-data-badge {
-            font-size: 10px;
-            padding: 1px 6px;
-            background: #166534;
-            color: #4ade80;
-            border-radius: 9999px;
-        }
+        th .sort-icon { opacity: 0.35; font-size: 10px; margin-left: 4px; }
+        th.sorted .sort-icon { opacity: 1; color: #00d4ff; }
+        .bookmaker-logo { width: 22px; height: 22px; object-fit: contain; border-radius: 4px; }
+        .player-image { width: 72px; height: 72px; object-fit: cover; border-radius: 9999px; border: 2px solid #334155; }
+        .detail-tab { padding: 8px 20px; font-weight: 600; font-size: 14px; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.2s; }
+        .detail-tab.active { border-bottom-color: #00d4ff; color: #00d4ff; }
+        .game-log-table th, .game-log-table td { padding: 8px 10px; font-size: 12px; text-align: center; }
+        .game-log-table th { background: #1e2937; color: #94a3b8; position: sticky; top: 0; }
+        .splits-chart-container { max-height: 260px; }
+        .best-bets-active { background: #059669 !important; color: white !important; border-color: #059669 !important; }
+        .verdict-strong { background: #065f46; color: #6ee7b7; }
+        .verdict-decent { background: #1e3a5f; color: #93c5fd; }
+        .verdict-weak { background: #44403c; color: #fcd34d; }
+        .verdict-avoid { background: #7f1d1d; color: #fca5a5; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-200">
@@ -76,6 +40,7 @@
             </div>
             <div class="text-emerald-400 font-medium">NineToFiveSports</div>
         </div>
+
         <div class="flex flex-col md:flex-row gap-4 mb-6">
             <div class="flex-1">
                 <div class="relative">
@@ -85,16 +50,17 @@
                     <i class="fa-solid fa-search absolute left-5 top-4 text-slate-400"></i>
                 </div>
             </div>
-           
             <button onclick="loadProps()"
                     class="px-8 py-3 bg-emerald-400 text-slate-950 rounded-3xl font-semibold flex items-center gap-x-3 hover:bg-emerald-300 transition-colors whitespace-nowrap">
                 <i class="fa-solid fa-rotate"></i>
                 <span>REFRESH</span>
             </button>
         </div>
+
         <div id="status" class="mb-6 p-4 bg-slate-900 rounded-3xl text-sm font-medium"></div>
+
         <!-- Filters -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
             <div>
                 <label class="text-xs text-slate-400 block mb-1">MARKET</label>
                 <select id="marketFilter" onchange="renderCurrentTab()" class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-5 py-3 text-sm">
@@ -119,13 +85,48 @@
                     <option value="">All Progress</option>
                 </select>
             </div>
-            <div id="primaryBookDiv" style="display: none;">
-                <label class="text-xs text-slate-400 block mb-1">PRIMARY BOOK</label>
-                <select id="primaryBookFilter" onchange="renderCurrentTab()" class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-5 py-3 text-sm">
-                    <option value="">All Books</option>
+            <div>
+                <label class="text-xs text-slate-400 block mb-1">MIN EV EDGE</label>
+                <select id="minEdgeFilter" onchange="renderCurrentTab()" class="w-full bg-slate-900 border border-slate-700 rounded-3xl px-5 py-3 text-sm">
+                    <option value="0" selected>All (0%+)</option>
+                    <option value="3">+3% or better</option>
+                    <option value="5">+5% or better</option>
+                    <option value="8">+8% or better</option>
+                    <option value="10">+10% or better</option>
                 </select>
             </div>
         </div>
+
+        <!-- Checkboxes + Best Bets -->
+        <div class="flex flex-wrap items-center gap-6 mb-6">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" id="agreeFilter" onchange="renderCurrentTab()"
+                       class="w-5 h-5 rounded border-slate-600 bg-slate-900 text-emerald-400 focus:ring-emerald-400 cursor-pointer">
+                <label for="agreeFilter" class="text-sm text-slate-300 cursor-pointer select-none">
+                    Only when Proj + EV Edge agree with Bet Tag
+                </label>
+            </div>
+            <div class="flex items-center gap-3">
+                <input type="checkbox" id="standardOnlyFilter" onchange="renderCurrentTab()" checked
+                       class="w-5 h-5 rounded border-slate-600 bg-slate-900 text-emerald-400 focus:ring-emerald-400 cursor-pointer">
+                <label for="standardOnlyFilter" class="text-sm text-slate-300 cursor-pointer select-none">
+                    Standard Props Only
+                </label>
+            </div>
+            <div class="flex items-center gap-3">
+                <input type="checkbox" id="hideLongshotsFilter" onchange="renderCurrentTab()" checked
+                       class="w-5 h-5 rounded border-slate-600 bg-slate-900 text-emerald-400 focus:ring-emerald-400 cursor-pointer">
+                <label for="hideLongshotsFilter" class="text-sm text-slate-300 cursor-pointer select-none">
+                    Hide extreme longshots (+700+)
+                </label>
+            </div>
+
+            <button id="bestBetsBtn" onclick="toggleBestBets()"
+                    class="ml-auto px-5 py-2 rounded-3xl text-sm font-semibold border border-slate-600 bg-slate-800 hover:bg-slate-700 transition-colors">
+                <i class="fa-solid fa-star mr-2"></i>Best Bets
+            </button>
+        </div>
+
         <!-- Tabs -->
         <div class="flex border-b border-slate-700 mb-6">
             <button onclick="switchTab(0)" id="tab-0" class="tab px-8 py-4 font-semibold text-xl flex-1">TRADITIONAL</button>
@@ -133,15 +134,19 @@
             <button onclick="switchTab(2)" id="tab-2" class="tab px-8 py-4 font-semibold text-xl flex-1">EXCHANGES</button>
             <button onclick="switchTab(3)" id="tab-3" class="tab px-8 py-4 font-semibold text-xl flex-1">ADVANCED</button>
         </div>
+
+        <div id="resultCount" class="text-xs text-slate-500 mb-3"></div>
+
         <table class="w-full bg-slate-900 rounded-3xl overflow-hidden">
             <thead class="bg-slate-800 text-xs text-slate-400">
                 <tr>
                     <th class="text-left py-5 px-6 w-96">PROP DETAILS</th>
                     <th class="text-left py-5 px-6">BOOKMAKER</th>
-                    <th onclick="sortTable(2)" class="text-right py-5 px-6">OVER / UNDER</th>
-                    <th onclick="sortTable(3)" class="text-right py-5 px-6">Proj.</th>
-                    <th onclick="sortTable(4)" class="text-right py-5 px-6">PROJ vs LINE</th>
-                    <th onclick="sortTable(5)" class="text-right py-5 px-6">EDGE %</th>
+                    <th class="text-right py-5 px-6">OVER / UNDER</th>
+                    <th class="text-right py-5 px-6" data-sort="proj" onclick="sortBy('proj')">PROJ <span class="sort-icon">↕</span></th>
+                    <th class="text-right py-5 px-6" data-sort="proj_vs_line" onclick="sortBy('proj_vs_line')">PROJ vs LINE <span class="sort-icon">↕</span></th>
+                    <th class="text-right py-5 px-6" data-sort="hit" onclick="sortBy('hit')">HIT % <span class="sort-icon">↕</span></th>
+                    <th class="text-right py-5 px-6 sorted" data-sort="edge" onclick="sortBy('edge')">EV EDGE <span class="sort-icon">↓</span></th>
                     <th class="text-right py-5 px-6">COMPARE</th>
                 </tr>
             </thead>
@@ -152,7 +157,9 @@
     <script>
         let allProps = [];
         let currentTab = 1;
-        let sortDirection = 1;
+        let currentSort = 'edge';
+        let sortDirection = -1;
+        let bestBetsMode = false;
         let playerDetailChart = null;
         let gameLogData = null;
         let gameLogsLoading = false;
@@ -162,8 +169,8 @@
         window.showPlayerDetailModal = showPlayerDetailModal;
 
         function getBookmakerType(book) {
-            const b = book.toLowerCase();
-            if (b.includes('prizepicks') || b.includes('underdog') || b.includes('betr') ||
+            const b = (book || '').toLowerCase();
+            if (b.includes('prizepicks') || b.includes('underdog') ||
                 b.includes('pick6') || b.includes('fliff') || b.includes('dabble')) return 'DFS';
             if (b.includes('pinnacle') || b.includes('prophetx') || b.includes('novig') ||
                 b.includes('kalshi') || b.includes('polymarket') || b.includes('betfair')) return 'Exchange';
@@ -191,122 +198,133 @@
                 const res = await fetch(csvUrl);
                 if (!res.ok) return false;
                 const text = await res.text();
-                const lines = text.trim().split('\n');
-                const header = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-                const idx = {
-                    away_team: header.indexOf('away_team'),
-                    home_team: header.indexOf('home_team'),
-                    market: header.indexOf('market'),
-                    description: header.indexOf('description'),
-                    point: header.indexOf('point'),
-                    bookmaker: header.indexOf('bookmaker'),
-                    bookmakerLogo: header.indexOf('Bookmaker Logo'),
-                    playerImage: header.indexOf('Player Image'),
-                    matchProgress: header.indexOf('Match Progress'),
-                    venueType: header.indexOf('Venue Type'),
-                    truePointAverageLine: header.indexOf('True Point Average Line'),
-                    overPrice: header.indexOf('Over Price'),
-                    underPrice: header.indexOf('Under Price'),
-                    maxNoVigDiff: header.indexOf('Max No-Vig Diff'),
-                    avgNoVigOver: header.indexOf('Average No-Vig Over %'),
-                    avgNoVigUnder: header.indexOf('Average No-Vig Under %'),
-                    truePrice: header.indexOf('True Price'),
-                    adjustedEdge: header.indexOf('Adjusted % Edge'),
-                    overPercent: header.indexOf('Over %'),
-                    underPercent: header.indexOf('Under %'),
-                    noVigOver: header.indexOf('No-Vig Over %'),
-                    noVigUnder: header.indexOf('No-Vig Under %'),
-                    betTag: header.indexOf('Bet Tag')
-                };
-                allProps = [];
-                for (let i = 1; i < lines.length; i++) {
-                    const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-                    const point = parseFloat(cols[idx.point]);
-                    const trueLine = parseFloat(cols[idx.truePointAverageLine]);
-                    const maxDiff = parseFloat(cols[idx.maxNoVigDiff]);
-                    const overP = parseFloat(cols[idx.overPrice]);
-                    const underP = parseFloat(cols[idx.underPrice]);
-                    const desc = cols[idx.description] || '';
-                    const tag = cols[idx.betTag] || '';
-                    const isUnder = desc.toLowerCase().includes('under') || tag.toLowerCase().includes('under');
-                    allProps.push({
-                        away_team: cols[idx.away_team] || '',
-                        home_team: cols[idx.home_team] || '',
-                        description: desc,
-                        market: cols[idx.market] || '',
+                const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: false });
+                if (!parsed.data || parsed.data.length === 0) return false;
+
+                allProps = parsed.data.map(row => {
+                    const point = parseFloat(row.point);
+                    const trueLine = parseFloat(row['True Point Average Line']);
+                    const percentEdge = parseFloat(row['% Edge']);
+                    const adjustedEdge = parseFloat(row['Adjusted % Edge']);
+                    const overP = parseFloat(row['Over Price']);
+                    const underP = parseFloat(row['Under Price']);
+                    const betTag = (row['Bet Tag'] || '').trim();
+                    const isUnder = betTag.toLowerCase() === 'under';
+                    const propType = (row['Prop Type'] || '').trim();
+
+                    return {
+                        away_team: row.away_team || '',
+                        home_team: row.home_team || '',
+                        description: row.description || '',
+                        market: row.market || '',
                         point: isNaN(point) ? null : point,
-                        bookmaker: cols[idx.bookmaker] || '',
-                        bookmaker_logo: cols[idx.bookmakerLogo] || '',
-                        player_image: cols[idx.playerImage] || '',
-                        match_progress: cols[idx.matchProgress] || '',
-                        venue_type: cols[idx.venueType] || '',
+                        bookmaker: row.bookmaker || '',
+                        bookmaker_logo: row['Bookmaker Logo'] || '',
+                        player_image: row['Player Image'] || '',
+                        match_progress: row['Match Progress'] || '',
+                        venue_type: row['Venue Type'] || '',
+                        bet_tag: betTag,
+                        label: isUnder ? 'Under' : 'Over',
+                        prop_type: propType,
                         true_point_average_line: isNaN(trueLine) ? null : trueLine,
                         true_vs_point: (isNaN(trueLine) || isNaN(point)) ? null : (trueLine - point),
+                        percent_edge: isNaN(percentEdge) ? null : percentEdge,
+                        adjusted_edge: isNaN(adjustedEdge) ? null : adjustedEdge,
                         over_price: isNaN(overP) ? null : overP,
                         under_price: isNaN(underP) ? null : underP,
-                        edge_percent: isNaN(maxDiff) ? null : maxDiff,
-                        avg_no_vig_over: cols[idx.avgNoVigOver] || '',
-                        avg_no_vig_under: cols[idx.avgNoVigUnder] || '',
-                        true_price: cols[idx.truePrice] || '',
-                        adjusted_edge: cols[idx.adjustedEdge] || '',
-                        over_percent: cols[idx.overPercent] || '',
-                        under_percent: cols[idx.underPercent] || '',
-                        no_vig_over: cols[idx.noVigOver] || '',
-                        no_vig_under: cols[idx.noVigUnder] || '',
-                        bet_tag: tag,
-                        label: isUnder ? 'Under' : 'Over'
-                    });
-                }
-                allProps = allProps.filter(p => p.description);
+                        over_percent: row['Over %'] || '',
+                        under_percent: row['Under %'] || '',
+                        no_vig_over: row['No-Vig Over %'] || '',
+                        no_vig_under: row['No-Vig Under %'] || '',
+                        true_price: row['True Price'] || '',
+                        avg_no_vig_over: row['Average No-Vig Over %'] || '',
+                        avg_no_vig_under: row['Average No-Vig Under %'] || '',
+                        max_no_vig_diff: row['Max No-Vig Diff'] || '',
+                        fav: row.Fav || '',
+                        spread: row.Spread || '',
+                        ou: row['O/U'] || ''
+                    };
+                }).filter(p => p.description);
+
                 document.getElementById('status').innerHTML = `✅ Loaded ${allProps.length} props`;
                 return true;
-            } catch (e) { return false; }
+            } catch (e) {
+                console.error(e);
+                return false;
+            }
         }
 
-        // ==================== PLAYER NAME EXTRACTION & MATCHING ====================
+        function sortBy(column) {
+            if (currentSort === column) sortDirection *= -1;
+            else { currentSort = column; sortDirection = -1; }
+
+            document.querySelectorAll('th[data-sort]').forEach(th => {
+                th.classList.remove('sorted');
+                const icon = th.querySelector('.sort-icon');
+                if (icon) icon.textContent = '↕';
+            });
+            const activeTh = document.querySelector(`th[data-sort="${column}"]`);
+            if (activeTh) {
+                activeTh.classList.add('sorted');
+                const icon = activeTh.querySelector('.sort-icon');
+                if (icon) icon.textContent = sortDirection === -1 ? '↓' : '↑';
+            }
+            renderCurrentTab();
+        }
+
+        function getSortValue(p, column) {
+            switch (column) {
+                case 'proj': return p.true_point_average_line ?? -999;
+                case 'proj_vs_line': return p.true_vs_point ?? -999;
+                case 'hit': return p.percent_edge ?? -999;
+                case 'edge': return p.adjusted_edge ?? -999;
+                default: return 0;
+            }
+        }
+
+        function toggleBestBets() {
+            bestBetsMode = !bestBetsMode;
+            const btn = document.getElementById('bestBetsBtn');
+            if (bestBetsMode) {
+                btn.classList.add('best-bets-active');
+                btn.innerHTML = '<i class="fa-solid fa-star mr-2"></i>Best Bets ON';
+            } else {
+                btn.classList.remove('best-bets-active');
+                btn.innerHTML = '<i class="fa-solid fa-star mr-2"></i>Best Bets';
+            }
+            renderCurrentTab();
+        }
+
         function extractPlayerName(description) {
             if (!description) return '';
             const marketKeywords = [' Hits+Runs+RBIs', ' Hits', ' Runs', ' RBIs', ' Strikeouts', ' Walks', ' Total Bases', ' Home Runs', ' Singles', ' Doubles', ' Triples', ' Pitcher Strikeouts', ' Batter Runs Scored'];
             let name = description.trim();
             for (const kw of marketKeywords) {
-                if (name.includes(kw)) {
-                    name = name.split(kw)[0].trim();
-                    break;
-                }
+                if (name.includes(kw)) { name = name.split(kw)[0].trim(); break; }
             }
-            name = name.replace(/\s+(Jr\.|Sr\.|III|IV)$/i, '').trim();
-            return name;
+            return name.replace(/\s+(Jr\.|Sr\.|III|IV)$/i, '').trim();
         }
 
         function namesMatch(csvName, targetName, positionHint = '') {
             if (!csvName || !targetName) return false;
             const c = csvName.toString().toLowerCase().trim();
             const t = targetName.toString().toLowerCase().trim();
-
             if (c === t) return true;
-
             const tParts = t.split(/\s+/);
             const cParts = c.split(/\s+/);
-
             if (tParts.length >= 2 && cParts.length >= 1) {
                 const tLast = tParts[tParts.length - 1];
                 const cLast = cParts[cParts.length - 1];
                 if (tLast === cLast) {
-                    if (positionHint.toLowerCase().includes('pitch')) {
-                        if (tParts.length >= 2 && cParts.length >= 2) {
-                            return tParts[0][0] === cParts[0][0];
-                        }
+                    if (positionHint.toLowerCase().includes('pitch') && tParts.length >= 2 && cParts.length >= 2) {
+                        return tParts[0][0] === cParts[0][0];
                     }
                     return true;
                 }
             }
-
             if (tParts.length === 2 && cParts.length >= 2) {
-                if (tParts[0][0] === cParts[0][0] && tParts[1] === cParts[cParts.length - 1]) {
-                    return true;
-                }
+                if (tParts[0][0] === cParts[0][0] && tParts[1] === cParts[cParts.length - 1]) return true;
             }
-
             if (c.includes(',') && tParts.length === 2) {
                 const [last, first] = c.split(',').map(s => s.trim());
                 if (last === tParts[1] && first[0] === tParts[0][0]) return true;
@@ -314,66 +332,43 @@
             return false;
         }
 
-        // ==================== PITCHING OUTS CALCULATOR ====================
-        /**
-         * Converts Innings Pitched (IP) decimal format into total outs.
-         * Example: 4.2 IP = 4 full innings (12 outs) + 2 outs from .2 = 14 outs
-         */
         function calculatePitchingOuts(ipValue) {
             if (!ipValue) return 0;
             const ip = parseFloat(ipValue);
             if (isNaN(ip)) return 0;
-
             const fullInnings = Math.floor(ip);
             const decimalPart = ip - fullInnings;
-
             let extraOuts = 0;
-            if (decimalPart >= 0.2) {
-                extraOuts = 2;
-            } else if (decimalPart >= 0.1) {
-                extraOuts = 1;
-            }
-
+            if (decimalPart >= 0.2) extraOuts = 2;
+            else if (decimalPart >= 0.1) extraOuts = 1;
             return (fullInnings * 3) + extraOuts;
         }
 
-        // ==================== REAL GAME LOG LOADING ====================
         async function loadGameLogs() {
             if (gameLogData || gameLogsLoading) return gameLogData;
             gameLogsLoading = true;
-
             const statusEl = document.getElementById('status');
             const originalStatus = statusEl ? statusEl.innerHTML : '';
-            if (statusEl) statusEl.innerHTML = '🔄 Loading real game logs from mlb-player-game-logs repo...';
+            if (statusEl) statusEl.innerHTML = '🔄 Loading real game logs...';
 
             const gameLogUrl = 'https://raw.githubusercontent.com/925Sports/mlb-player-game-logs/main/mlb_2026_season_game_logs.csv?' + Date.now();
-
             try {
                 const res = await fetch(gameLogUrl);
                 if (!res.ok) throw new Error('Failed to fetch');
-
                 const text = await res.text();
-                const parsed = Papa.parse(text, {
-                    header: true,
-                    skipEmptyLines: true,
-                    dynamicTyping: false
-                });
-
-                gameLogData = (parsed.data || []).filter(row => 
+                const parsed = Papa.parse(text, { header: true, skipEmptyLines: true, dynamicTyping: false });
+                gameLogData = (parsed.data || []).filter(row =>
                     row.player_name || row.fullName || row.playerName || row.full_name || row.player_full_name
                 );
-
                 if (statusEl) {
                     statusEl.innerHTML = `✅ Loaded ${gameLogData.length} real game log rows`;
-                    setTimeout(() => {
-                        if (statusEl && statusEl.innerHTML.includes('game log')) statusEl.innerHTML = originalStatus;
-                    }, 2200);
+                    setTimeout(() => { if (statusEl && statusEl.innerHTML.includes('game log')) statusEl.innerHTML = originalStatus; }, 2200);
                 }
                 return gameLogData;
             } catch (e) {
-                console.error('Real game log loading failed:', e);
+                console.error(e);
                 if (statusEl) {
-                    statusEl.innerHTML = '⚠️ Could not load real game logs (using sample data)';
+                    statusEl.innerHTML = '⚠️ Could not load real game logs';
                     setTimeout(() => { if (statusEl) statusEl.innerHTML = originalStatus; }, 2800);
                 }
                 gameLogData = [];
@@ -385,14 +380,11 @@
 
         function getPlayerGameLogs(playerName, limit = 20, positionHint = '') {
             if (!gameLogData || gameLogData.length === 0) return [];
-
             const target = extractPlayerName(playerName);
-
             let filtered = gameLogData.filter(row => {
                 const csvName = row.player_name || row.fullName || row.playerName || row.full_name || row.player_full_name || '';
                 return namesMatch(csvName, target, positionHint);
             });
-
             if (positionHint.toLowerCase().includes('pitch')) {
                 filtered = filtered.filter(row => {
                     const ip = parseFloat(row.innings_pitched || row.IP || row.inningsPitched || row.player_pitcher_ip || 0);
@@ -400,13 +392,11 @@
                     return ip > 0 || k > 0;
                 });
             }
-
             const seen = new Map();
             for (const row of filtered) {
                 const dateKey = (row.game_date || row.date || row.gameDate || '').toString().slice(0, 10);
-                if (!seen.has(dateKey)) {
-                    seen.set(dateKey, row);
-                } else {
+                if (!seen.has(dateKey)) seen.set(dateKey, row);
+                else {
                     const existing = seen.get(dateKey);
                     const existingIP = parseFloat(existing.innings_pitched || existing.IP || 0);
                     const newIP = parseFloat(row.innings_pitched || row.IP || 0);
@@ -414,14 +404,11 @@
                 }
             }
             filtered = Array.from(seen.values());
-
-            const sorted = filtered.sort((a, b) => {
+            return filtered.sort((a, b) => {
                 const dA = new Date(a.game_date || a.date || a.gameDate || a.officialDate || 0);
                 const dB = new Date(b.game_date || b.date || b.gameDate || b.officialDate || 0);
                 return dB - dA;
-            });
-
-            return sorted.slice(0, limit);
+            }).slice(0, limit);
         }
 
         function getOpponent(row) {
@@ -429,18 +416,11 @@
             if (row.opp) return row.opp;
             if (row.opponent_abbrev) return row.opponent_abbrev;
             if (row.opp_abbrev) return row.opp_abbrev;
-
             const homeAbbr = row.home_team_abbrev || row.home_team_abbreviation || row.homeTeamAbbrev || row.home_team || '';
             const awayAbbr = row.away_team_abbrev || row.away_team_abbreviation || row.awayTeamAbbrev || row.away_team || '';
-
             const homeAway = (row.home_away || row.homeAway || row.is_home || '').toString().toLowerCase();
-            if (homeAway === 'home' || homeAway === 'h' || homeAway === 'true') {
-                return awayAbbr || homeAbbr;
-            }
-            if (homeAway === 'away' || homeAway === 'a' || homeAway === 'false') {
-                return homeAbbr || awayAbbr;
-            }
-
+            if (homeAway === 'home' || homeAway === 'h' || homeAway === 'true') return awayAbbr || homeAbbr;
+            if (homeAway === 'away' || homeAway === 'a' || homeAway === 'false') return homeAbbr || awayAbbr;
             const playerTeam = (row.team_abbrev || row.team || row.player_team || '').toString().toUpperCase();
             if (playerTeam && homeAbbr && awayAbbr) {
                 if (playerTeam === homeAbbr.toUpperCase()) return awayAbbr;
@@ -449,55 +429,27 @@
             return awayAbbr || homeAbbr || '?';
         }
 
-        // ==================== SMART STAT VALUE FOR SPLITS (with Pitching Outs support) ====================
         function getStatValueForSplits(row, market = '', description = '') {
             const lowerMarket = (market || '').toLowerCase();
             const lowerDesc = (description || '').toLowerCase();
-
-            // Pitcher strikeouts
             if (lowerMarket.includes('strikeout') || lowerDesc.includes('strikeout')) {
-                return parseFloat(
-                    row.strikeouts || row.strikeouts_pitched || row.K || row.strikeOutsPitching || 0
-                );
+                return parseFloat(row.strikeouts || row.strikeouts_pitched || row.K || row.strikeOutsPitching || 0);
             }
-
-            // Pitching Outs (NEW - calculated from IP)
-            if (lowerMarket.includes('outs') || lowerDesc.includes('outs') || 
-                lowerMarket.includes('pitching outs') || lowerDesc.includes('pitching outs')) {
-                return calculatePitchingOuts(
-                    row.innings_pitched || row.IP || row.inningsPitched || row.player_pitcher_ip || 0
-                );
+            if (lowerMarket.includes('outs') || lowerDesc.includes('outs') || lowerMarket.includes('pitching outs') || lowerDesc.includes('pitching outs')) {
+                return calculatePitchingOuts(row.innings_pitched || row.IP || row.inningsPitched || row.player_pitcher_ip || 0);
             }
-
-            // Batter Runs Scored
             if (lowerMarket.includes('runs scored') || lowerDesc.includes('runs scored') || lowerDesc.includes('batter runs')) {
                 return parseFloat(row.runs || row.R || 0);
             }
-
-            // Hits + Runs + RBIs (combined)
             if (lowerMarket.includes('hits+runs+rbis') || lowerDesc.includes('hits+runs+rbis')) {
                 const h = parseFloat(row.hits || row.H || 0);
                 const r = parseFloat(row.runs || row.R || 0);
                 const rbi = parseFloat(row.rbi || row.RBI || 0);
                 return h + r + rbi;
             }
-
-            // Pure Hits
-            if (lowerMarket.includes('hits') || lowerDesc.includes(' hits')) {
-                return parseFloat(row.hits || row.H || 0);
-            }
-
-            // Pure RBIs
-            if (lowerMarket.includes('rbi') || lowerDesc.includes('rbi')) {
-                return parseFloat(row.rbi || row.RBI || 0);
-            }
-
-            // Home Runs
-            if (lowerMarket.includes('home run') || lowerDesc.includes('home run')) {
-                return parseFloat(row.home_runs || row.HR || 0);
-            }
-
-            // Total Bases
+            if (lowerMarket.includes('hits') || lowerDesc.includes(' hits')) return parseFloat(row.hits || row.H || 0);
+            if (lowerMarket.includes('rbi') || lowerDesc.includes('rbi')) return parseFloat(row.rbi || row.RBI || 0);
+            if (lowerMarket.includes('home run') || lowerDesc.includes('home run')) return parseFloat(row.home_runs || row.HR || 0);
             if (lowerMarket.includes('total base') || lowerDesc.includes('total base')) {
                 const h = parseFloat(row.hits || row.H || 0);
                 const doubles = parseFloat(row.doubles || 0);
@@ -505,8 +457,6 @@
                 const hr = parseFloat(row.home_runs || row.HR || 0);
                 return h + doubles + (triples * 2) + (hr * 3);
             }
-
-            // Default fallback
             return parseFloat(row.runs || row.R || row.hits || row.H || 0);
         }
 
@@ -520,6 +470,7 @@
                 opt.textContent = m.replace(/_/g, ' ').toUpperCase();
                 marketSelect.appendChild(opt);
             });
+
             const gameSet = new Set(allProps.map(p => `${p.away_team} @ ${p.home_team}`));
             const gameSelect = document.getElementById('gameFilter');
             gameSelect.innerHTML = '<option value="">All Games</option>';
@@ -529,16 +480,13 @@
                 opt.textContent = g;
                 gameSelect.appendChild(opt);
             });
+
             let bookSet;
-            if (currentTab === 0) {
-                bookSet = new Set(allProps.filter(p => isTraditional(p.bookmaker)).map(p => p.bookmaker));
-            } else if (currentTab === 1) {
-                bookSet = new Set(allProps.filter(p => isDFS(p.bookmaker)).map(p => p.bookmaker));
-            } else if (currentTab === 2) {
-                bookSet = new Set(allProps.filter(p => isExchange(p.bookmaker)).map(p => p.bookmaker));
-            } else {
-                bookSet = new Set(allProps.map(p => p.bookmaker));
-            }
+            if (currentTab === 0) bookSet = new Set(allProps.filter(p => isTraditional(p.bookmaker)).map(p => p.bookmaker));
+            else if (currentTab === 1) bookSet = new Set(allProps.filter(p => isDFS(p.bookmaker)).map(p => p.bookmaker));
+            else if (currentTab === 2) bookSet = new Set(allProps.filter(p => isExchange(p.bookmaker)).map(p => p.bookmaker));
+            else bookSet = new Set(allProps.map(p => p.bookmaker));
+
             const bookSelect = document.getElementById('bookFilter');
             bookSelect.innerHTML = '<option value="">All Books</option>';
             Array.from(bookSet).sort().forEach(b => {
@@ -547,6 +495,7 @@
                 opt.textContent = b;
                 bookSelect.appendChild(opt);
             });
+
             const progressSet = new Set(allProps.map(p => p.match_progress).filter(Boolean));
             const progressSelect = document.getElementById('matchProgressFilter');
             progressSelect.innerHTML = '<option value="">All Progress</option>';
@@ -556,32 +505,33 @@
                 opt.textContent = p;
                 progressSelect.appendChild(opt);
             });
-            const primarySelect = document.getElementById('primaryBookFilter');
-            primarySelect.innerHTML = '<option value="">All Books</option>';
-            Array.from(new Set(allProps.map(p => p.bookmaker))).sort().forEach(b => {
-                const opt = document.createElement('option');
-                opt.value = b;
-                opt.textContent = b;
-                primarySelect.appendChild(opt);
-            });
         }
 
         function renderCurrentTab() {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
+
             const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
             const marketFilter = document.getElementById('marketFilter').value;
             const gameFilter = document.getElementById('gameFilter').value;
             const bookFilter = document.getElementById('bookFilter').value;
             const progressFilter = document.getElementById('matchProgressFilter').value;
-            let filtered = allProps;
+            const minEdge = parseFloat(document.getElementById('minEdgeFilter').value) || 0;
+            const agreeFilter = document.getElementById('agreeFilter')?.checked;
+            const standardOnly = document.getElementById('standardOnlyFilter')?.checked;
+            const hideLongshots = document.getElementById('hideLongshotsFilter')?.checked;
+
+            let filtered = [...allProps];
+
             if (currentTab === 0) filtered = filtered.filter(p => isTraditional(p.bookmaker));
             if (currentTab === 1) filtered = filtered.filter(p => isDFS(p.bookmaker));
             if (currentTab === 2) filtered = filtered.filter(p => isExchange(p.bookmaker));
+
             if (marketFilter) filtered = filtered.filter(p => p.market === marketFilter);
             if (gameFilter) filtered = filtered.filter(p => `${p.away_team} @ ${p.home_team}` === gameFilter);
             if (bookFilter) filtered = filtered.filter(p => p.bookmaker === bookFilter);
             if (progressFilter) filtered = filtered.filter(p => p.match_progress === progressFilter);
+
             if (searchTerm) {
                 filtered = filtered.filter(p =>
                     p.description.toLowerCase().includes(searchTerm) ||
@@ -590,72 +540,93 @@
                     p.market.toLowerCase().includes(searchTerm)
                 );
             }
+
+            if (standardOnly) filtered = filtered.filter(p => p.prop_type === 'Standard');
+            if (minEdge > 0) filtered = filtered.filter(p => (p.adjusted_edge || 0) >= minEdge);
+            if (hideLongshots) {
+                filtered = filtered.filter(p => {
+                    if (p.over_price != null && p.over_price > 700) return false;
+                    return true;
+                });
+            }
+
+            if (agreeFilter) {
+                filtered = filtered.filter(p => {
+                    const isOver = (p.label === 'Over' || p.bet_tag === 'Over');
+                    const projDiff = p.true_vs_point;
+                    const evEdge = p.adjusted_edge;
+                    if (projDiff == null || evEdge == null) return false;
+                    const projAgrees = isOver ? projDiff > 0 : projDiff < 0;
+                    return projAgrees && evEdge > 0;
+                });
+            }
+
+            if (bestBetsMode) {
+                filtered = filtered.filter(p => {
+                    const isOver = (p.label === 'Over' || p.bet_tag === 'Over');
+                    const projDiff = p.true_vs_point;
+                    const evEdge = p.adjusted_edge;
+                    if (projDiff == null || evEdge == null || evEdge <= 0) return false;
+                    const projAgrees = isOver ? projDiff > 0 : projDiff < 0;
+                    if (!projAgrees) return false;
+                    if (Math.abs(projDiff) > 1.8) return false;
+                    const isDfs = isDFS(p.bookmaker);
+                    if (!isDfs && p.prop_type !== 'Standard') return false;
+                    return true;
+                });
+            }
+
             filtered.sort((a, b) => {
-                const edgeA = a.edge_percent || -999;
-                const edgeB = b.edge_percent || -999;
-                return edgeB - edgeA;
+                const valA = getSortValue(a, currentSort);
+                const valB = getSortValue(b, currentSort);
+                return (valB - valA) * (sortDirection === -1 ? 1 : -1);
             });
+
+            const countEl = document.getElementById('resultCount');
+            if (countEl) countEl.textContent = `Showing ${Math.min(filtered.length, 800)} of ${filtered.length} props`;
+
             filtered.slice(0, 800).forEach(p => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-slate-800';
+
                 const trueLine = p.true_point_average_line != null ? p.true_point_average_line.toFixed(2) : '-';
                 const diff = p.true_vs_point;
                 const diffDisplay = diff != null ? (diff > 0 ? '+' : '') + diff.toFixed(2) : '-';
-                const edgeValue = p.edge_percent;
-                const edgeDisplay = edgeValue != null ? edgeValue.toFixed(2) + '%' : '-';
-                const edgeColor = edgeValue > 0 ? 'text-emerald-400' : edgeValue < 0 ? 'text-rose-400' : '';
-                const overUnder = (p.over_price != null && p.under_price != null) ? `${p.over_price} / ${p.under_price}` : '-';
+                const hitProb = p.percent_edge != null ? p.percent_edge.toFixed(1) + '%' : '-';
+                const adjEdge = p.adjusted_edge;
+                const adjEdgeDisplay = adjEdge != null ? (adjEdge > 0 ? '+' : '') + adjEdge.toFixed(2) + '%' : '-';
+                const adjEdgeColor = adjEdge > 0 ? 'text-emerald-400' : adjEdge < 0 ? 'text-rose-400' : '';
+                const overUnder = (p.over_price != null || p.under_price != null) ? `${p.over_price ?? '-'} / ${p.under_price ?? '-'}` : '-';
                 const isUnder = p.label === 'Under';
-                const tagColorClass = isUnder
-                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-                let bookmakerHTML = '';
-                if (p.bookmaker_logo) {
-                    bookmakerHTML = `
-                        <div class="flex items-center gap-x-2">
-                            <img src="${p.bookmaker_logo}" class="bookmaker-logo" alt="${p.bookmaker}"
-                                 onerror="this.style.display='none'">
-                            <span class="text-xs uppercase">${p.bookmaker}</span>
-                        </div>
-                    `;
-                } else {
-                    bookmakerHTML = `<span class="text-xs uppercase">${p.bookmaker}</span>`;
-                }
+                const tagColorClass = isUnder ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+
+                let bookmakerHTML = p.bookmaker_logo
+                    ? `<div class="flex items-center gap-x-2"><img src="${p.bookmaker_logo}" class="bookmaker-logo" alt="${p.bookmaker}" onerror="this.style.display='none'"><span class="text-xs uppercase">${p.bookmaker}</span></div>`
+                    : `<span class="text-xs uppercase">${p.bookmaker}</span>`;
+
                 let extraInfo = '';
-                if (p.match_progress) {
-                    extraInfo += `<span class="px-2 py-0.5 text-[10px] bg-slate-700 rounded mr-1">${p.match_progress}</span>`;
-                }
-                if (p.venue_type) {
-                    extraInfo += `<span class="px-2 py-0.5 text-[10px] bg-slate-600 rounded">${p.venue_type}</span>`;
-                }
+                if (p.match_progress) extraInfo += `<span class="px-2 py-0.5 text-[10px] bg-slate-700 rounded mr-1">${p.match_progress}</span>`;
+                if (p.venue_type) extraInfo += `<span class="px-2 py-0.5 text-[10px] bg-slate-600 rounded">${p.venue_type}</span>`;
+
                 const playerNameClick = `showPlayerDetailModal('${p.description.replace(/'/g, "\\'")}', '${p.market}', ${p.point}, '${p.away_team}', '${p.home_team}')`;
+
                 row.innerHTML = `
                     <td class="px-6 py-5">
-                        <div class="font-semibold text-base cursor-pointer hover:text-emerald-400 transition-colors" onclick="${playerNameClick}">
-                            ${p.description}
-                        </div>
-                        <div class="text-sm mt-0.5">
-                            ${p.market.replace(/_/g, ' ').toUpperCase()}
-                            <span class="font-bold">${p.point || ''}</span>
-                        </div>
+                        <div class="font-semibold text-base cursor-pointer hover:text-emerald-400 transition-colors" onclick="${playerNameClick}">${p.description}</div>
+                        <div class="text-sm mt-0.5">${p.market.replace(/_/g, ' ').toUpperCase()} <span class="font-bold">${p.point ?? ''}</span></div>
                         <div class="text-xs text-slate-500 mt-1">${p.away_team} @ ${p.home_team}</div>
                         ${extraInfo ? `<div class="mt-1.5">${extraInfo}</div>` : ''}
-                        <div class="mt-1">
-                            <span class="px-2.5 py-0.5 text-xs font-medium rounded-2xl ${tagColorClass}">
-                                ${p.bet_tag || ''}
-                            </span>
-                        </div>
+                        <div class="mt-1"><span class="px-2.5 py-0.5 text-xs font-medium rounded-2xl ${tagColorClass}">${p.bet_tag || ''}</span></div>
                     </td>
                     <td class="px-6 py-5">${bookmakerHTML}</td>
                     <td class="px-6 py-5 text-right font-mono text-sm">${overUnder}</td>
                     <td class="px-6 py-5 text-right font-mono">${trueLine}</td>
                     <td class="px-6 py-5 text-right font-mono ${diff > 0 ? 'text-emerald-400' : diff < 0 ? 'text-rose-400' : ''}">${diffDisplay}</td>
-                    <td class="px-6 py-5 text-right font-mono ${edgeColor}">${edgeDisplay}</td>
+                    <td class="px-6 py-5 text-right font-mono">${hitProb}</td>
+                    <td class="px-6 py-5 text-right font-mono font-semibold ${adjEdgeColor}">${adjEdgeDisplay}</td>
                     <td class="px-6 py-5 text-right">
                         <button onclick="showComparisonModalFromList(this, '${p.away_team}|${p.home_team}|${p.description}|${p.market}|${p.point}'); event.stopImmediatePropagation();"
-                                class="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-2xl border border-slate-600">
-                            View Books
-                        </button>
+                                class="px-3 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded-2xl border border-slate-600">View Books</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -665,8 +636,6 @@
         function switchTab(n) {
             currentTab = n;
             document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('tab-active', i === n));
-            const primaryDiv = document.getElementById('primaryBookDiv');
-            if (primaryDiv) primaryDiv.style.display = (n === 3) ? 'block' : 'none';
             populateFilters();
             renderCurrentTab();
         }
@@ -686,39 +655,35 @@
         function showComparisonModal(key) {
             const group = window.propGroups[key];
             if (!group) return;
-            group.sort((a, b) => {
-                const edgeA = a.edge_percent || -999;
-                const edgeB = b.edge_percent || -999;
-                return edgeB - edgeA;
-            });
+            group.sort((a, b) => (b.adjusted_edge ?? -999) - (a.adjusted_edge ?? -999));
             const first = group[0];
             const proj = first.true_point_average_line != null ? first.true_point_average_line.toFixed(2) : '-';
             const projVsLine = first.true_vs_point != null ? (first.true_vs_point > 0 ? '+' : '') + first.true_vs_point.toFixed(2) : '-';
             const truePrice = first.true_price || '-';
-            const likelihood = first.adjusted_edge || '-';
-            let playerImageHTML = '';
-            if (first.player_image) {
-                playerImageHTML = `<img src="${first.player_image}" class="player-image" alt="${first.description}" onerror="this.style.display='none'">`;
-            } else {
-                playerImageHTML = `<div class="w-[72px] h-[72px] bg-slate-700 rounded-full flex items-center justify-center text-2xl font-bold text-slate-400">?</div>`;
-            }
+            const hitProb = first.percent_edge != null ? first.percent_edge.toFixed(1) + '%' : '-';
+            const adjEdge = first.adjusted_edge != null ? (first.adjusted_edge > 0 ? '+' : '') + first.adjusted_edge.toFixed(2) + '%' : '-';
+
+            let playerImageHTML = first.player_image
+                ? `<img src="${first.player_image}" class="player-image" alt="${first.description}" onerror="this.style.display='none'">`
+                : `<div class="w-[72px] h-[72px] bg-slate-700 rounded-full flex items-center justify-center text-2xl font-bold text-slate-400">?</div>`;
+
             let html = `<div class="fixed inset-0 bg-black/80 flex items-center justify-center z-[100]" onclick="this.remove()">
                 <div class="bg-slate-900 rounded-3xl max-w-7xl w-full mx-4 overflow-hidden" onclick="event.stopImmediatePropagation()">
                     <div class="p-6 border-b border-slate-700">
                         <div class="flex justify-between items-start gap-6">
-                            <div class="flex-shrink-0">
-                                ${playerImageHTML}
-                            </div>
+                            <div class="flex-shrink-0">${playerImageHTML}</div>
                             <div class="flex-1 min-w-0">
-                                <div class="text-2xl font-semibold cursor-pointer hover:text-emerald-400" onclick="showPlayerDetailModal('${first.description.replace(/'/g, "\\'")}', '${first.market}', ${first.point}, '${first.away_team}', '${first.home_team}'); this.closest('.fixed').remove();">
+                                <div class="text-2xl font-semibold cursor-pointer hover:text-emerald-400"
+                                     onclick="showPlayerDetailModal('${first.description.replace(/'/g, "\\'")}', '${first.market}', ${first.point}, '${first.away_team}', '${first.home_team}'); this.closest('.fixed').remove();">
                                     ${first.description}
                                 </div>
                                 <div class="text-sm text-slate-400 mt-1">${first.away_team} @ ${first.home_team} • Line ${first.point}</div>
                                 <div class="flex flex-wrap gap-x-6 gap-y-1 mt-4 text-sm">
                                     <div><span class="text-slate-400">Proj:</span> <span class="font-semibold">${proj}</span></div>
                                     <div><span class="text-slate-400">PROJ vs LINE:</span> <span class="font-semibold">${projVsLine}</span></div>
+                                    <div><span class="text-slate-400">Hit %:</span> <span class="font-semibold">${hitProb}</span></div>
+                                    <div><span class="text-slate-400">EV Edge:</span> <span class="font-semibold">${adjEdge}</span></div>
                                     <div><span class="text-slate-400">True Price:</span> <span class="font-semibold">${truePrice}</span></div>
-                                    <div><span class="text-slate-400">% Likelihood:</span> <span class="font-semibold">${likelihood}</span></div>
                                 </div>
                             </div>
                             <button onclick="this.closest('.fixed').remove()" class="text-3xl flex-shrink-0">&times;</button>
@@ -726,42 +691,37 @@
                     </div>
                     <div class="p-6 max-h-[70vh] overflow-auto">
                         <table class="w-full">
-                            <thead><tr class="text-xs text-slate-400">
-                                <th class="text-left py-3">BOOKMAKER</th>
-                                <th class="text-left py-3">TYPE</th>
-                                <th class="text-right py-3">POINT</th>
-                                <th class="text-right py-3">OVER / UNDER</th>
-                                <th class="text-right py-3">Over %</th>
-                                <th class="text-right py-3">Under %</th>
-                                <th class="text-right py-3">No-Vig Over %</th>
-                                <th class="text-right py-3">No-Vig Under %</th>
-                                <th class="text-right py-3">EDGE %</th>
-                            </tr></thead>
+                            <thead>
+                                <tr class="text-xs text-slate-400">
+                                    <th class="text-left py-3">BOOKMAKER</th>
+                                    <th class="text-left py-3">TYPE</th>
+                                    <th class="text-right py-3">POINT</th>
+                                    <th class="text-right py-3">OVER / UNDER</th>
+                                    <th class="text-right py-3">Over %</th>
+                                    <th class="text-right py-3">Under %</th>
+                                    <th class="text-right py-3">No-Vig Over %</th>
+                                    <th class="text-right py-3">No-Vig Under %</th>
+                                    <th class="text-right py-3">HIT %</th>
+                                    <th class="text-right py-3">EV EDGE</th>
+                                </tr>
+                            </thead>
                             <tbody>`;
+
             group.forEach(p => {
-                const edgeValue = p.edge_percent;
-                const edgeDisplay = edgeValue != null ? edgeValue.toFixed(2) + '%' : '-';
-                const edgeColor = edgeValue > 0 ? 'text-emerald-400' : edgeValue < 0 ? 'text-rose-400' : '';
-                const overUnder = (p.over_price != null && p.under_price != null) ? `${p.over_price} / ${p.under_price}` : '-';
+                const hit = p.percent_edge != null ? p.percent_edge.toFixed(1) + '%' : '-';
+                const adj = p.adjusted_edge != null ? (p.adjusted_edge > 0 ? '+' : '') + p.adjusted_edge.toFixed(2) + '%' : '-';
+                const adjColor = p.adjusted_edge > 0 ? 'text-emerald-400' : p.adjusted_edge < 0 ? 'text-rose-400' : '';
+                const overUnder = (p.over_price != null || p.under_price != null) ? `${p.over_price ?? '-'} / ${p.under_price ?? '-'}` : '-';
                 const type = getBookmakerType(p.bookmaker);
-                let logoHTML = '';
-                if (p.bookmaker_logo) {
-                    logoHTML = `<img src="${p.bookmaker_logo}" class="bookmaker-logo inline-block mr-2" alt="${p.bookmaker}" onerror="this.style.display='none'">`;
-                }
+                let logoHTML = p.bookmaker_logo ? `<img src="${p.bookmaker_logo}" class="bookmaker-logo inline-block mr-2" alt="${p.bookmaker}" onerror="this.style.display='none'">` : '';
+
                 html += `<tr class="hover:bg-slate-800">
-                    <td class="py-3 px-4">
-                        <div class="flex items-center gap-x-2">
-                            ${logoHTML}
-                            <span class="text-xs uppercase">${p.bookmaker}</span>
-                        </div>
-                    </td>
+                    <td class="py-3 px-4"><div class="flex items-center gap-x-2">${logoHTML}<span class="text-xs uppercase">${p.bookmaker}</span></div></td>
                     <td class="py-3 px-4">
                         <span class="px-2.5 py-0.5 text-xs font-medium rounded-2xl
                             ${type === 'Traditional' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
                               type === 'DFS' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-                              'bg-orange-500/20 text-orange-400 border border-orange-500/30'}">
-                            ${type}
-                        </span>
+                              'bg-orange-500/20 text-orange-400 border border-orange-500/30'}">${type}</span>
                     </td>
                     <td class="py-3 px-4 text-right font-mono">${p.point != null ? p.point : '-'}</td>
                     <td class="py-3 px-4 text-right font-mono text-sm">${overUnder}</td>
@@ -769,30 +729,29 @@
                     <td class="py-3 px-4 text-right font-mono">${p.under_percent || '-'}</td>
                     <td class="py-3 px-4 text-right font-mono">${p.no_vig_over || '-'}</td>
                     <td class="py-3 px-4 text-right font-mono">${p.no_vig_under || '-'}</td>
-                    <td class="py-3 px-4 text-right font-mono ${edgeColor}">${edgeDisplay}</td>
+                    <td class="py-3 px-4 text-right font-mono">${hit}</td>
+                    <td class="py-3 px-4 text-right font-mono font-semibold ${adjColor}">${adj}</td>
                 </tr>`;
             });
+
             html += `</tbody></table>
                     <div class="mt-4 text-center">
-                        <button onclick="showPlayerDetailModal('${first.description.replace(/'/g, "\\'")}', '${first.market}', ${first.point}, '${first.away_team}', '${first.home_team}'); this.closest('.fixed').remove();" 
+                        <button onclick="showPlayerDetailModal('${first.description.replace(/'/g, "\\'")}', '${first.market}', ${first.point}, '${first.away_team}', '${first.home_team}'); this.closest('.fixed').remove();"
                                 class="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-3xl text-sm font-semibold flex items-center gap-x-2 mx-auto">
-                            <i class="fa-solid fa-chart-line"></i>
-                            <span>View Game Logs &amp; Splits</span>
+                            <i class="fa-solid fa-chart-line"></i><span>View Game Logs &amp; Splits</span>
                         </button>
                     </div>
-                    </div>
-                </div>
-            </div>`;
+                    </div></div></div>`;
             document.body.insertAdjacentHTML('beforeend', html);
         }
 
-        // ==================== PLAYER DETAIL POPUP ====================
+        // ==================== PLAYER DETAIL MODAL (with Summary tab) ====================
         async function showPlayerDetailModal(description, market, point, away_team, home_team) {
             const existing = document.getElementById('playerDetailPopup');
             if (existing) existing.remove();
 
             const playerName = extractPlayerName(description);
-            const isPitcherProp = (market || description).toLowerCase().includes('strikeout') || 
+            const isPitcherProp = (market || description).toLowerCase().includes('strikeout') ||
                                   (market || description).toLowerCase().includes('pitcher');
 
             let html = `
@@ -812,10 +771,11 @@
                         </div>
 
                         <div class="flex border-b border-slate-700 px-6 bg-slate-950">
-                            <div onclick="switchPlayerDetailTab(0, '${description.replace(/'/g, "\\'")}', '${market}', ${point}, '${away_team}', '${home_team}', ${isPitcherProp})" id="pdtab-0" class="detail-tab active px-6 py-3">Overview</div>
-                            <div onclick="switchPlayerDetailTab(1, '${description.replace(/'/g, "\\'")}', '${market}', ${point}, '${away_team}', '${home_team}', ${isPitcherProp})" id="pdtab-1" class="detail-tab px-6 py-3">Game Log</div>
-                            <div onclick="switchPlayerDetailTab(2, '${description.replace(/'/g, "\\'")}', '${market}', ${point}, '${away_team}', '${home_team}', ${isPitcherProp})" id="pdtab-2" class="detail-tab px-6 py-3">Splits</div>
-                            <div onclick="switchPlayerDetailTab(3, '${description.replace(/'/g, "\\'")}', '${market}', ${point}, '${away_team}', '${home_team}', ${isPitcherProp})" id="pdtab-3" class="detail-tab px-6 py-3">Matchup</div>
+                            <div onclick="switchPlayerDetailTab(0, '${description.replace(/'/g, "\\'")}', '${market}', ${point}, '${away_team}', '${home_team}', ${isPitcherProp})" id="pdtab-0" class="detail-tab active px-6 py-3">Summary</div>
+                            <div onclick="switchPlayerDetailTab(1, '${description.replace(/'/g, "\\'")}', '${market}', ${point}, '${away_team}', '${home_team}', ${isPitcherProp})" id="pdtab-1" class="detail-tab px-6 py-3">Overview</div>
+                            <div onclick="switchPlayerDetailTab(2, '${description.replace(/'/g, "\\'")}', '${market}', ${point}, '${away_team}', '${home_team}', ${isPitcherProp})" id="pdtab-2" class="detail-tab px-6 py-3">Game Log</div>
+                            <div onclick="switchPlayerDetailTab(3, '${description.replace(/'/g, "\\'")}', '${market}', ${point}, '${away_team}', '${home_team}', ${isPitcherProp})" id="pdtab-3" class="detail-tab px-6 py-3">Splits</div>
+                            <div onclick="switchPlayerDetailTab(4, '${description.replace(/'/g, "\\'")}', '${market}', ${point}, '${away_team}', '${home_team}', ${isPitcherProp})" id="pdtab-4" class="detail-tab px-6 py-3">Matchup</div>
                         </div>
 
                         <div class="flex-1 overflow-auto p-6" id="playerDetailContent"></div>
@@ -824,10 +784,7 @@
             `;
             document.body.insertAdjacentHTML('beforeend', html);
 
-            if (typeof window.loadGameLogs === 'function') {
-                window.loadGameLogs();
-            }
-
+            if (typeof window.loadGameLogs === 'function') window.loadGameLogs();
             switchPlayerDetailTab(0, description, market, point, away_team, home_team, isPitcherProp);
         }
 
@@ -842,25 +799,175 @@
 
             const playerName = extractPlayerName(description);
             const positionHint = isPitcherProp ? 'Pitcher' : '';
+            const relatedProps = allProps.filter(p => p.description === description && p.market === market && p.point == point);
+            const bestProp = relatedProps.length > 0
+                ? relatedProps.reduce((best, p) => ((p.adjusted_edge || -999) > (best.adjusted_edge || -999) ? p : best), relatedProps[0])
+                : null;
 
+            // ========== SUMMARY TAB ==========
             if (tabIndex === 0) {
-                const relatedProps = allProps.filter(p => p.description === description && p.market === market && p.point == point);
-                const bestEdge = relatedProps.length > 0 ? Math.max(...relatedProps.map(p => p.edge_percent || 0)) : 0;
+                content.innerHTML = `<div class="text-center py-12 text-slate-400">Loading summary...</div>`;
+
+                if (typeof window.loadGameLogs === 'function') await window.loadGameLogs();
+
+                const logs = getPlayerGameLogs(playerName, 20, positionHint);
+                const lineValue = parseFloat(point) || 0;
+                const isOver = bestProp ? (bestProp.label === 'Over' || bestProp.bet_tag === 'Over') : true;
+
+                // Calculate hit rates from game logs
+                let l5Hits = 0, l10Hits = 0, l20Hits = 0;
+                let l5Total = 0, l10Total = 0, l20Total = 0;
+                const values = [];
+
+                logs.forEach((row, i) => {
+                    const val = getStatValueForSplits(row, market, description);
+                    values.push(val);
+                    const hit = isOver ? val >= lineValue : val < lineValue;
+                    if (i < 5)  { l5Total++;  if (hit) l5Hits++; }
+                    if (i < 10) { l10Total++; if (hit) l10Hits++; }
+                    if (i < 20) { l20Total++; if (hit) l20Hits++; }
+                });
+
+                const l5Rate  = l5Total  > 0 ? Math.round((l5Hits  / l5Total)  * 100) : null;
+                const l10Rate = l10Total > 0 ? Math.round((l10Hits / l10Total) * 100) : null;
+                const l20Rate = l20Total > 0 ? Math.round((l20Hits / l20Total) * 100) : null;
+
+                const edge = bestProp?.adjusted_edge ?? null;
+                const hitProb = bestProp?.percent_edge ?? null;
+                const proj = bestProp?.true_point_average_line ?? null;
+                const projDiff = bestProp?.true_vs_point ?? null;
+                const betTag = bestProp?.bet_tag || (isOver ? 'Over' : 'Under');
+
+                // Build verdict
+                let score = 0;
+                const reasons = [];
+
+                if (edge != null) {
+                    if (edge >= 8)      { score += 3; reasons.push(`Strong price edge (+${edge.toFixed(1)}%) vs market consensus`); }
+                    else if (edge >= 4) { score += 2; reasons.push(`Solid price edge (+${edge.toFixed(1)}%)`); }
+                    else if (edge >= 1) { score += 1; reasons.push(`Small positive edge (+${edge.toFixed(1)}%)`); }
+                    else if (edge > -2) { score += 0; reasons.push(`Roughly fair price (${edge.toFixed(1)}%)`); }
+                    else                { score -= 2; reasons.push(`Poor price vs market (${edge.toFixed(1)}%)`); }
+                }
+
+                if (projDiff != null) {
+                    const agrees = isOver ? projDiff > 0 : projDiff < 0;
+                    if (agrees && Math.abs(projDiff) >= 0.4) {
+                        score += 2;
+                        reasons.push(`Projection strongly favors ${betTag} (${projDiff > 0 ? '+' : ''}${projDiff.toFixed(2)} vs line)`);
+                    } else if (agrees) {
+                        score += 1;
+                        reasons.push(`Projection mildly favors ${betTag}`);
+                    } else {
+                        score -= 2;
+                        reasons.push(`Projection disagrees with ${betTag} side`);
+                    }
+                }
+
+                if (l10Rate != null) {
+                    if (l10Rate >= 70)      { score += 2; reasons.push(`Hot recent form: ${l10Rate}% hit rate over last 10 games`); }
+                    else if (l10Rate >= 55) { score += 1; reasons.push(`Decent recent form: ${l10Rate}% over last 10`); }
+                    else if (l10Rate >= 40) { score += 0; reasons.push(`Average recent form: ${l10Rate}% over last 10`); }
+                    else                    { score -= 1; reasons.push(`Cold recent form: only ${l10Rate}% over last 10`); }
+                } else {
+                    reasons.push('No recent game-log data available for this player/market');
+                }
+
+                let verdict, verdictClass, verdictText;
+                if (score >= 5) {
+                    verdict = 'STRONG';
+                    verdictClass = 'verdict-strong';
+                    verdictText = 'This looks like a high-quality spot. Edge, projection, and recent form all align.';
+                } else if (score >= 3) {
+                    verdict = 'DECENT';
+                    verdictClass = 'verdict-decent';
+                    verdictText = 'Playable. Some supporting factors, but not a slam dunk.';
+                } else if (score >= 1) {
+                    verdict = 'WEAK';
+                    verdictClass = 'verdict-weak';
+                    verdictText = 'Marginal. Only consider if you have a strong opinion or extra context.';
+                } else {
+                    verdict = 'AVOID';
+                    verdictClass = 'verdict-avoid';
+                    verdictText = 'Poor setup. Price, projection, or form is working against this bet.';
+                }
+
+                content.innerHTML = `
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Verdict Card -->
+                        <div class="lg:col-span-1">
+                            <div class="rounded-2xl p-6 ${verdictClass}">
+                                <div class="text-xs font-semibold uppercase tracking-wider opacity-80 mb-1">Verdict</div>
+                                <div class="text-4xl font-bold mb-3">${verdict}</div>
+                                <p class="text-sm leading-relaxed opacity-90">${verdictText}</p>
+                            </div>
+
+                            <div class="mt-4 bg-slate-800 rounded-2xl p-5 space-y-3 text-sm">
+                                <div class="flex justify-between"><span class="text-slate-400">Side</span><span class="font-semibold">${betTag}</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">EV Edge</span><span class="font-semibold ${edge > 0 ? 'text-emerald-400' : edge < 0 ? 'text-rose-400' : ''}">${edge != null ? (edge > 0 ? '+' : '') + edge.toFixed(2) + '%' : '—'}</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Hit Probability</span><span class="font-semibold">${hitProb != null ? hitProb.toFixed(1) + '%' : '—'}</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Projection</span><span class="font-semibold">${proj != null ? proj.toFixed(2) : '—'}</span></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Proj vs Line</span><span class="font-semibold ${projDiff > 0 ? 'text-emerald-400' : projDiff < 0 ? 'text-rose-400' : ''}">${projDiff != null ? (projDiff > 0 ? '+' : '') + projDiff.toFixed(2) : '—'}</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Reasons + Game Log Snapshot -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <div class="bg-slate-800 rounded-2xl p-6">
+                                <div class="font-semibold mb-4">Why this rating?</div>
+                                <ul class="space-y-2 text-sm">
+                                    ${reasons.map(r => `<li class="flex items-start gap-2"><span class="text-emerald-400 mt-0.5">•</span><span>${r}</span></li>`).join('')}
+                                </ul>
+                            </div>
+
+                            <div class="bg-slate-800 rounded-2xl p-6">
+                                <div class="font-semibold mb-4">Recent Game Log vs Line (${lineValue})</div>
+                                ${logs.length === 0 ? `
+                                    <div class="text-slate-400 text-sm">No recent game logs found for this player.</div>
+                                ` : `
+                                    <div class="grid grid-cols-3 gap-4 mb-5">
+                                        <div class="text-center p-3 bg-slate-900 rounded-xl">
+                                            <div class="text-xs text-slate-400 mb-1">L5 Hit Rate</div>
+                                            <div class="text-2xl font-bold ${l5Rate >= 60 ? 'text-emerald-400' : l5Rate < 40 ? 'text-rose-400' : ''}">${l5Rate != null ? l5Rate + '%' : '—'}</div>
+                                        </div>
+                                        <div class="text-center p-3 bg-slate-900 rounded-xl">
+                                            <div class="text-xs text-slate-400 mb-1">L10 Hit Rate</div>
+                                            <div class="text-2xl font-bold ${l10Rate >= 60 ? 'text-emerald-400' : l10Rate < 40 ? 'text-rose-400' : ''}">${l10Rate != null ? l10Rate + '%' : '—'}</div>
+                                        </div>
+                                        <div class="text-center p-3 bg-slate-900 rounded-xl">
+                                            <div class="text-xs text-slate-400 mb-1">L20 Hit Rate</div>
+                                            <div class="text-2xl font-bold ${l20Rate >= 60 ? 'text-emerald-400' : l20Rate < 40 ? 'text-rose-400' : ''}">${l20Rate != null ? l20Rate + '%' : '—'}</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-xs text-slate-500">
+                                        Hit = finished ${isOver ? 'at or above' : 'below'} the line of ${lineValue} in that game.
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            // ========== OVERVIEW TAB ==========
+            else if (tabIndex === 1) {
+                const bestEdge = relatedProps.length > 0 ? Math.max(...relatedProps.map(p => p.adjusted_edge || 0)) : 0;
                 const proj = relatedProps.length > 0 && relatedProps[0].true_point_average_line != null ? relatedProps[0].true_point_average_line.toFixed(2) : '-';
                 const diff = relatedProps.length > 0 && relatedProps[0].true_vs_point != null ? relatedProps[0].true_vs_point.toFixed(2) : '-';
+                const hitProb = relatedProps.length > 0 && relatedProps[0].percent_edge != null ? relatedProps[0].percent_edge.toFixed(1) + '%' : '-';
 
                 content.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="md:col-span-2 bg-slate-800 rounded-2xl p-6">
-                            <div class="text-sm text-slate-400 mb-1">CURRENT BEST EDGE</div>
-                            <div class="text-5xl font-semibold ${bestEdge > 0 ? 'text-emerald-400' : 'text-rose-400'}">${bestEdge.toFixed(1)}%</div>
+                            <div class="text-sm text-slate-400 mb-1">BEST EV EDGE</div>
+                            <div class="text-5xl font-semibold ${bestEdge > 0 ? 'text-emerald-400' : 'text-rose-400'}">${bestEdge > 0 ? '+' : ''}${bestEdge.toFixed(1)}%</div>
                             <div class="mt-4 text-sm">
                                 <div class="flex justify-between py-1 border-b border-slate-700"><span class="text-slate-400">Projection</span> <span class="font-mono">${proj}</span></div>
                                 <div class="flex justify-between py-1 border-b border-slate-700"><span class="text-slate-400">Proj vs Line</span> <span class="font-mono">${diff}</span></div>
+                                <div class="flex justify-between py-1 border-b border-slate-700"><span class="text-slate-400">Hit Probability</span> <span class="font-mono">${hitProb}</span></div>
                                 <div class="flex justify-between py-1"><span class="text-slate-400">Books Available</span> <span class="font-semibold">${relatedProps.length}</span></div>
                             </div>
                             <div class="mt-6">
-                                <button onclick="showComparisonModalFromList(null, '${away_team}|${home_team}|${description}|${market}|${point}'); document.getElementById('playerDetailPopup').remove();" 
+                                <button onclick="showComparisonModalFromList(null, '${away_team}|${home_team}|${description}|${market}|${point}'); document.getElementById('playerDetailPopup').remove();"
                                         class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 rounded-3xl font-semibold flex items-center justify-center gap-x-2">
                                     <i class="fa-solid fa-exchange-alt"></i> Compare All Books
                                 </button>
@@ -869,19 +976,21 @@
                         <div class="bg-slate-800 rounded-2xl p-6 text-sm">
                             <div class="font-semibold mb-3">Quick Insights for ${playerName}</div>
                             <div class="space-y-3 text-slate-300">
-                                <div class="flex items-start gap-3"><i class="fa-solid fa-info-circle mt-1 text-emerald-400"></i> <span>Strong value on multiple sportsbooks.</span></div>
-                                <div class="flex items-start gap-3"><i class="fa-solid fa-database mt-1 text-emerald-400"></i> <span>Game Log + Splits now show Pitching Outs for pitchers (calculated from IP: 1 IP = 3 outs + decimal).</span></div>
+                                <div class="flex items-start gap-3"><i class="fa-solid fa-info-circle mt-1 text-emerald-400"></i> <span>Sorted by EV Edge (Adjusted % Edge vs market).</span></div>
+                                <div class="flex items-start gap-3"><i class="fa-solid fa-database mt-1 text-emerald-400"></i> <span>Game Log + Splits support Pitching Outs calculated from IP.</span></div>
                             </div>
                         </div>
                     </div>
                 `;
-            } else if (tabIndex === 1) {
+            }
+            // ========== GAME LOG TAB ==========
+            else if (tabIndex === 2) {
                 content.innerHTML = `
                     <div>
                         <div class="flex items-center justify-between mb-4">
                             <div>
                                 <div class="font-semibold">Recent Game Log for ${playerName}</div>
-                                <div class="text-xs text-slate-400">Real data • mlb-player-game-logs repo • Pitching Outs = (IP × 3) + extra outs from decimal</div>
+                                <div class="text-xs text-slate-400">Real data • mlb-player-game-logs repo</div>
                             </div>
                             <input id="gameLogFilter" placeholder="Filter by opponent..." class="bg-slate-800 border border-slate-700 rounded-2xl px-4 py-1.5 text-sm w-64" oninput="filterGameLogTable()">
                         </div>
@@ -889,34 +998,22 @@
                             <table class="game-log-table w-full text-sm">
                                 <thead>
                                     <tr class="text-slate-400">
-                                        <th class="text-left">Date</th>
-                                        <th>Opp</th>
-                                        <th>AB/IP</th>
-                                        <th>Outs</th>
-                                        <th>H</th>
-                                        <th>R</th>
-                                        <th>RBI</th>
-                                        <th>HR</th>
-                                        <th>K</th>
-                                        <th>BB</th>
-                                        <th class="text-left">Summary</th>
+                                        <th class="text-left">Date</th><th>Opp</th><th>AB/IP</th><th>Outs</th><th>H</th><th>R</th><th>RBI</th><th>HR</th><th>K</th><th>BB</th><th class="text-left">Summary</th>
                                     </tr>
                                 </thead>
                                 <tbody id="gameLogBody"></tbody>
                             </table>
                         </div>
-                        <div class="text-[10px] text-emerald-400 mt-2 text-center flex items-center justify-center gap-x-2">
-                            <span class="real-data-badge">REAL DATA</span> 
-                            <span>strict name matching + Pitching Outs from your mlb-player-game-logs repo</span>
-                        </div>
                     </div>
                 `;
                 await renderRealGameLogTable(description, positionHint);
-            } else if (tabIndex === 2) {
+            }
+            // ========== SPLITS TAB ==========
+            else if (tabIndex === 3) {
                 content.innerHTML = `
                     <div>
                         <div class="font-semibold mb-1">Performance vs Line — ${market.replace(/_/g, ' ')} @ ${point}</div>
-                        <div class="text-xs text-slate-400 mb-4">Player: ${playerName} • Most recent on the LEFT • Pitching Outs calculated from IP when applicable</div>
+                        <div class="text-xs text-slate-400 mb-4">Player: ${playerName}</div>
                         <div class="splits-chart-container bg-slate-800 rounded-2xl p-4" style="height: 260px;">
                             <canvas id="splitsChart"></canvas>
                         </div>
@@ -925,42 +1022,35 @@
                             <div><span class="text-emerald-400 font-semibold">L10 Hit Rate:</span> <span id="l10Rate">—</span></div>
                             <div><span class="text-emerald-400 font-semibold">L20 Hit Rate:</span> <span id="l20Rate">—</span></div>
                         </div>
-                        <div class="mt-3 text-center text-xs text-slate-400">
-                            Pitching Outs = (Full Innings × 3) + extra outs from decimal (.1 = 1 out, .2 = 2 outs)
-                        </div>
                     </div>
                 `;
                 setTimeout(() => renderRealSplitsChart(description, point, market, positionHint), 80);
-            } else if (tabIndex === 3) {
+            }
+            // ========== MATCHUP TAB ==========
+            else if (tabIndex === 4) {
                 content.innerHTML = `
                     <div class="text-center py-12">
                         <i class="fa-solid fa-shield-alt text-4xl text-slate-600 mb-4"></i>
                         <div class="text-xl font-semibold">Matchup Analysis for ${playerName}</div>
-                        <div class="text-slate-400 mt-2 max-w-md mx-auto">Pitcher vs batter splits, park factors, and weather data coming soon.</div>
+                        <div class="text-slate-400 mt-2 max-w-md mx-auto">Coming soon.</div>
                     </div>
                 `;
             }
         }
 
-        // ==================== REAL DATA RENDERERS ====================
         async function renderRealGameLogTable(description, positionHint = '') {
             const tbody = document.getElementById('gameLogBody');
             if (!tbody) return;
-
-            if (typeof window.loadGameLogs === 'function') {
-                await window.loadGameLogs();
-            }
-
+            if (typeof window.loadGameLogs === 'function') await window.loadGameLogs();
             const playerName = extractPlayerName(description);
             const logs = getPlayerGameLogs(playerName, 20, positionHint);
 
             if (logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="11" class="py-8 text-center text-slate-400">No recent game logs found for <strong>${playerName}</strong> with strict name matching.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" class="py-8 text-center text-slate-400">No recent game logs found for <strong>${playerName}</strong>.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = '';
-
             logs.forEach(row => {
                 const date = (row.game_date || row.date || row.gameDate || '').toString().slice(0, 10);
                 const opp = getOpponent(row);
@@ -981,9 +1071,7 @@
                     <td class="font-semibold">${opp}</td>
                     <td>${abip}</td>
                     <td class="font-semibold text-emerald-400">${outs > 0 ? outs : ''}</td>
-                    <td>${h}</td>
-                    <td>${r}</td>
-                    <td>${rbi}</td>
+                    <td>${h}</td><td>${r}</td><td>${rbi}</td>
                     <td class="${hr > 0 ? 'text-emerald-400 font-bold' : ''}">${hr}</td>
                     <td class="${parseFloat(k) > 5 ? 'text-emerald-400 font-semibold' : ''}">${k}</td>
                     <td>${bb}</td>
@@ -995,8 +1083,7 @@
 
         function filterGameLogTable() {
             const filter = document.getElementById('gameLogFilter').value.toUpperCase();
-            const rows = document.querySelectorAll('#gameLogBody tr');
-            rows.forEach(row => {
+            document.querySelectorAll('#gameLogBody tr').forEach(row => {
                 const opp = row.cells[1] ? row.cells[1].textContent.toUpperCase() : '';
                 row.style.display = opp.includes(filter) ? '' : 'none';
             });
@@ -1005,42 +1092,30 @@
         async function renderRealSplitsChart(description, point, market = '', positionHint = '') {
             const canvas = document.getElementById('splitsChart');
             if (!canvas) return;
-
-            if (playerDetailChart) {
-                playerDetailChart.destroy();
-                playerDetailChart = null;
-            }
-
-            if (typeof window.loadGameLogs === 'function') {
-                await window.loadGameLogs();
-            }
+            if (playerDetailChart) { playerDetailChart.destroy(); playerDetailChart = null; }
+            if (typeof window.loadGameLogs === 'function') await window.loadGameLogs();
 
             const playerName = extractPlayerName(description);
             const logs = getPlayerGameLogs(playerName, 20, positionHint);
             const lineValue = parseFloat(point) || 2.5;
 
-            let labels = [];
-            let data = [];
+            let labels = [], data = [];
             const hasReal = logs.length > 0;
 
             if (hasReal) {
                 logs.forEach((row, i) => {
                     const d = (row.game_date || row.date || row.gameDate || '').toString().slice(5, 10);
-                    labels.push(d || `G${i+1}`);
-
-                    // This now correctly handles Pitching Outs when the prop is related to outs
-                    const val = getStatValueForSplits(row, market, description);
-                    data.push(val);
+                    labels.push(d || `G${i + 1}`);
+                    data.push(getStatValueForSplits(row, market, description));
                 });
             } else {
-                labels = Array.from({length: 20}, (_, i) => `G${i+1}`);
-                data = [2.8,1.0,2.8,0,0,0,2.8,1.0,1.0,1.0,2.8,3.0,1.0,1.0,4.0,2.8,3.0,1.0,2.8,1.0];
+                labels = Array.from({ length: 20 }, (_, i) => `G${i + 1}`);
+                data = [2.8, 1.0, 2.8, 0, 0, 0, 2.8, 1.0, 1.0, 1.0, 2.8, 3.0, 1.0, 1.0, 4.0, 2.8, 3.0, 1.0, 2.8, 1.0];
             }
 
             const ctx = canvas.getContext('2d');
-
             const datasets = [{
-                label: market ? market.replace(/_/g,' ') : 'Stat vs Line',
+                label: market ? market.replace(/_/g, ' ') : 'Stat vs Line',
                 data: data,
                 backgroundColor: data.map(v => v >= lineValue ? '#22c55e' : '#ef4444'),
                 borderColor: '#111827',
@@ -1048,7 +1123,6 @@
                 borderRadius: 4,
                 order: 2
             }];
-
             if (data.length > 0) {
                 datasets.push({
                     label: `Line @ ${lineValue}`,
@@ -1077,10 +1151,9 @@
                 }
             });
 
-            const hitRate = hasReal && data.length > 0 
-                ? Math.round((data.filter(v => v >= lineValue).length / data.length) * 100) + '%' 
+            const hitRate = hasReal && data.length > 0
+                ? Math.round((data.filter(v => v >= lineValue).length / data.length) * 100) + '%'
                 : '—';
-
             const l5 = document.getElementById('l5Rate');
             const l10 = document.getElementById('l10Rate');
             const l20 = document.getElementById('l20Rate');
@@ -1089,32 +1162,10 @@
             if (l20) l20.textContent = hasReal ? hitRate : '—';
         }
 
-        function sortTable(colIndex) {
-            const tbody = document.getElementById('table-body');
-            let rows = Array.from(tbody.rows);
-            rows.sort((a, b) => {
-                let valA = a.cells[colIndex].textContent.replace(/[^0-9.-]/g, '');
-                let valB = b.cells[colIndex].textContent.replace(/[^0-9.-]/g, '');
-                const numA = parseFloat(valA);
-                const numB = parseFloat(valB);
-                if (isNaN(numA) && isNaN(numB)) return 0;
-                if (isNaN(numA)) return 1;
-                if (isNaN(numB)) return -1;
-                return (numB - numA) * sortDirection;
-            });
-            sortDirection *= -1;
-            rows.forEach(row => tbody.appendChild(row));
-        }
-
         window.onload = () => {
             document.getElementById('tab-1').classList.add('tab-active');
-            if (typeof loadGameLogs === 'function') {
-                window.loadGameLogs = loadGameLogs;
-            }
             loadProps();
         };
-
-        window.MLB_DEBUG = { allProps, extractPlayerName, gameLogData, loadGameLogs, getPlayerGameLogs, namesMatch, getStatValueForSplits, calculatePitchingOuts };
     </script>
 </body>
 </html>
